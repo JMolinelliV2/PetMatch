@@ -3,6 +3,7 @@ import { useEffect, useId, useState } from "react";
 import type { FormEvent } from "react";
 import { VerifyEmailNotice } from "./verify-email-notice";
 import { Icon } from "./ui/pictogram";
+import {RecoveryExperience} from "./recovery-experience";
 
 type Review = { id: string; display_name: string; rating: number; comment: string; created_at: string; visibility: string };
 type ReviewState = { eligible: boolean; email_verified: boolean; review: Review | null };
@@ -67,6 +68,7 @@ export function ReviewRequest({ caseId, recovered = false }: { caseId: string; r
   if (state && !state.eligible && !state.review) return null;
   if (dismissed && !expanded && state?.eligible && !state.review) return <div className="review-later"><button type="button" className="text-button" onClick={() => { setExpanded(true); setDismissed(false); }}>Dejar una reseña de MascoMatch</button></div>;
   return <section className="review-request" aria-labelledby={`${id}-title`}>
+    {recovered&&<RecoveryExperience caseId={caseId}/>}
     <div className="review-request-heading"><span className="feature-icon"><Icon name="heart" /></span><div><h3 id={`${id}-title`}>{state?.review ? "Tu reseña de MascoMatch" : "¿Cómo fue tu experiencia con MascoMatch?"}</h3><p>{state?.review ? state.review.visibility === "WITHDRAWN" ? "Retiraste tu reseña de la portada." : state.review.visibility === "HIDDEN" ? "Tu reseña está guardada, pero no se muestra en la portada." : "Gracias por compartir tu experiencia con la comunidad." : recovered ? "Nos alegra que tu mascota esté con vos. Si querés, contanos cómo fue la búsqueda." : "Ahora que cerraste el aviso, podés contarnos cómo fue la búsqueda, cualquiera haya sido el resultado."}</p></div></div>
     {state?.review ? <>
       {state.review.visibility !== "WITHDRAWN" && <><p className="review-rating">{state.review.rating} de 5 estrellas</p><p className="review-own-comment">{state.review.comment}</p><p className="field-help">Nombre público: {state.review.display_name}</p><button type="button" disabled={busy} className="text-button" onClick={() => void withdraw()}>{busy ? "Retirando…" : "Retirar mi reseña de la portada"}</button></>}

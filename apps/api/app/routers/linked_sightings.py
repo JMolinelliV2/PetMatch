@@ -3,7 +3,7 @@ import hashlib
 import json
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -15,7 +15,7 @@ from app.db.session import get_db
 from app.dependencies import optional_user
 from app.matching.linked import aware, evaluate_sighting
 from app.models import LostCase, Notification, Observation, Photo, User
-from app.schemas import LinkedSightingRead
+from app.schemas import CoarseGeo, LinkedSightingRead
 from app.account_management import lock_active_user
 
 router = APIRouter(prefix="/public/lost-animals", tags=["linked-sightings"])
@@ -29,18 +29,22 @@ def result(db, observation):
 @router.post("/{case_id}/sightings", response_model=LinkedSightingRead, status_code=201)
 def create_linked_sighting(
     case_id: UUID,
+    request: Request,
     request_id: UUID = Form(),
     observed_at: datetime = Form(),
     latitude: float = Form(ge=-90, le=90, allow_inf_nan=False),
     longitude: float = Form(ge=-180, le=180, allow_inf_nan=False),
     location_accuracy_meters: int | None = Form(default=None, ge=0, le=100000),
     public_location: str | None = Form(default=None, max_length=350),
+    analytics_geo: str | None = Form(default=None,max_length=350),
     photos: list[UploadFile] | None = File(default=None),
     db: Session = Depends(get_db),
     user: User | None = Depends(optional_user),
 ):
     if user:
         user=lock_active_user(db,user)
+    try:geo=CoarseGeo.model_validate_json(analytics_geo).model_dump() if analytics_geo else CoarseGeo().model_dump()
+    except ValueError:raise HTTPException(422,"La zona general no es válida.")
     case = db.scalar(select(LostCase).where(LostCase.id == case_id, LostCase.status == "ACTIVE").with_for_update())
     if case is None:
         raise HTTPException(status_code=404, detail="El aviso ya no está activo.")
@@ -73,7 +77,7 @@ def create_linked_sighting(
         id=request_id, author_id=user.id if user else None, linked_case_id=case_id, submission_hash=digest,
         species=case.pet.species, sex="unknown", description="Avistamiento enviado desde un aviso. La identidad del animal está por confirmar.",
         observed_at=observed_at, latitude=latitude, longitude=longitude, location_accuracy_meters=location_accuracy_meters,
-        public_location=public_location, source_type="USER_SIGHTING", matching_status="PENDING",
+        public_location=public_location, source_type="USER_SIGHTING", matching_status="PENDING",analytics_geo=geo,
     )
     stored_keys = []
     try:
@@ -90,6 +94,10 @@ def create_linked_sighting(
             db.flush()
             schedule_photo(db, photo)
         evaluate_sighting(db, observation.id)
+        from app.product_analytics import record
+        for name in ("sighting_created","sighting_authenticated" if user else "sighting_anonymous","sighting_linked"):
+            record(db,name,observation.id,request=request,user=user,entity=observation)
+        if images:record(db,"sighting_with_photo",observation.id,request=request,user=user,entity=observation)
         db.commit()
         db.refresh(observation)
     except Exception as exc:

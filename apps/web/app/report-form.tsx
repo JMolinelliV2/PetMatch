@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import type { Place } from "@/lib/places";
+import {analyticsGeo} from "@/lib/places";
+import {track} from "@/lib/product-analytics";
 import { LocationPicker } from "./location-picker";
 import { ReportAnalysis } from "./report-analysis";
 import { ReportMatches } from "./report-matches";
@@ -268,6 +270,7 @@ export function ReportForm({ kind }: { kind: ReportKind }) {
     try {
       let accountUser = sessionUser;
       if (!accountUser) {
+        if(accountMode==="register")void track({name:"registration_started",page:"REGISTER"});
         const account = await send<{ user: SessionUser & { email: string } }>(`/auth/${accountMode}`, {
           email: text("email").toLowerCase(),
           password: String(form.get("password") ?? ""),
@@ -292,6 +295,7 @@ export function ReportForm({ kind }: { kind: ReportKind }) {
         kind !== "lost" && text("eventNote") ? `Detalles del reporte: ${text("eventNote")}` : "",
       ].filter(Boolean).join("\n\n");
       const locationData = location ? {
+        analytics_geo:analyticsGeo(location),
         latitude: location.latitude,
         longitude: location.longitude,
         ...(location.accuracyMeters === undefined ? {} : { location_accuracy_meters: location.accuracyMeters }),

@@ -1,6 +1,13 @@
 # Standalone definition: never merge development's public service ports or source mounts.
 x-backend: &backend
   APP_ENV: production
+  ANALYTICS_ENABLED: ${ANALYTICS_ENABLED:-true}
+  RATE_LIMIT_ANALYTICS: ${RATE_LIMIT_ANALYTICS:-120}
+  RATE_LIMIT_ANALYTICS_DAILY: ${RATE_LIMIT_ANALYTICS_DAILY:-200000}
+  ANALYTICS_VISITOR_DAYS: ${ANALYTICS_VISITOR_DAYS:-180}
+  ANALYTICS_SESSION_MINUTES: ${ANALYTICS_SESSION_MINUTES:-30}
+  ANALYTICS_RAW_DAYS: ${ANALYTICS_RAW_DAYS:-90}
+  ANALYTICS_DAILY_DAYS: ${ANALYTICS_DAILY_DAYS:-730}
   DATABASE_URL_FILE: /run/secrets/database_url
   JWT_SECRET_FILE: /run/secrets/jwt_secret
   REDIS_URL_FILE: /run/secrets/redis_url

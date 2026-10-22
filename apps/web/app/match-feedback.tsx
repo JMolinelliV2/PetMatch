@@ -1,11 +1,15 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {RecoveryQuestion} from "./recovery-question";
+import type {RecoveryReason} from "./recovery-question";
+import {useMatchVisibility} from "./product-tracking";
 
 type FeedbackStatus = "CONFIRMED_RELEVANT" | "FALSE_MATCH" | "RESOLVED";
 export type FeedbackSaved = { status: FeedbackStatus; recovered: boolean; caseId: string };
 
-export function MatchFeedback({ id, caseId, status, caseActive = true, onSaved }: {
+export function MatchFeedback({ id, caseId, status, caseActive = true, onSaved, presentation }: {
+  presentation?:string|null;
   id: string;
   caseId: string;
   status: string | null;
@@ -17,16 +21,18 @@ export function MatchFeedback({ id, caseId, status, caseActive = true, onSaved }
   const [recovered, setRecovered] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [recovering,setRecovering]=useState(false);
+  const visibility=useMatchVisibility(presentation);
 
   useEffect(() => { setCurrent(status); }, [status]);
 
-  async function save(value: FeedbackStatus, wasRecovered = false) {
+  async function save(value: FeedbackStatus, wasRecovered = false, reason:RecoveryReason="PREFER_NOT_TO_SAY") {
     if (busy || !caseActive || recovered) return;
     setBusy(true); setMessage(""); setError("");
     try {
       const response = await fetch(`/api/matches/${id}/feedback`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: value, recovered: wasRecovered }),
+        body: JSON.stringify({ status: value, recovered: wasRecovered,...(wasRecovered?{recovery_reason:reason}:{}) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : "No pudimos guardar tu respuesta. Intentá de nuevo.");
@@ -42,7 +48,7 @@ export function MatchFeedback({ id, caseId, status, caseActive = true, onSaved }
     finally { setBusy(false); }
   }
 
-  return <section className="match-feedback" aria-label="Revisar avistamiento">
+  return <section ref={visibility} className="match-feedback" aria-label="Revisar avistamiento">
     {!caseActive || recovered ? <>
       <p className="field-help">{recovered ? "Tu mascota está encontrada y este aviso ya no aparece en las búsquedas activas." : "La búsqueda de este aviso ya está cerrada."}</p>
       <Link className="text-button" href="/mis-avisos">Ver el estado en Mis avisos</Link>
@@ -57,7 +63,7 @@ export function MatchFeedback({ id, caseId, status, caseActive = true, onSaved }
       <div className="match-recovery">
         <h3>¿Ya está con vos?</h3>
         <p className="field-help">Si ya recuperaste a tu mascota, marcala como encontrada. El aviso dejará de aparecer entre los animales perdidos y de generar alertas.</p>
-        <button type="button" className="button button-primary" disabled={busy} onClick={() => void save("RESOLVED", true)}>{busy ? "Guardando…" : "Ya la recuperé"}</button>
+        {recovering?<RecoveryQuestion busy={busy} onConfirm={reason=>void save("RESOLVED",true,reason)} onCancel={()=>setRecovering(false)}/>:<button type="button" className="button button-primary" disabled={busy} onClick={() => setRecovering(true)}>Ya la recuperé</button>}
       </div>
     </>}
     {message && <p role="status" className="field-help">{message}</p>}

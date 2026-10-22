@@ -21,7 +21,7 @@ def collect_labels(db):
         elif not previous:
             pairs[key]={"photos":list(key),"label":label,"source":source}
     photos=list(db.scalars(select(Photo)))
-    pets=list(db.scalars(select(Pet)))
+    pets=[pet for pet in db.scalars(select(Pet)) if pet.evaluation_consent_version is None or pet.evaluation_consent]
     cases={case.id:case for case in db.scalars(select(LostCase))}
     pet_photos={pet.id:[photo for photo in photos if (photo.owner_type=="pet" and photo.owner_id==pet.id)
         or (photo.owner_type=="lost_case" and photo.owner_id in cases and cases[photo.owner_id].pet_id==pet.id)] for pet in pets}
@@ -38,7 +38,7 @@ def collect_labels(db):
         match=db.get(Match,match_id)
         case=cases.get(match.lost_case_id) if match else None
         pet=db.get(Pet,case.pet_id) if case else None
-        if not pet or event.actor_id!=pet.owner_id:
+        if not pet or pet.id not in pet_photos or event.actor_id!=pet.owner_id:
             continue
         references=[p for p in pet_photos[pet.id] if aware(p.created_at)<=aware(event.created_at)]
         observed=[p for p in photos if p.owner_type=="observation" and p.owner_id==match.observation_id and aware(p.created_at)<=aware(event.created_at)]

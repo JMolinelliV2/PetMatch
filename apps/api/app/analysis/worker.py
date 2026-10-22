@@ -29,7 +29,9 @@ def heartbeat(worker,kinds,stop):
             os._exit(70)
         try:
             for kind in kinds:
-                worker.connection.set("mascomatch:worker:"+kind,json.dumps({"time":time.time(),"pid":os.getpid()}),ex=30)
+                from app.ops.resources import container_resources
+                worker.connection.set("mascomatch:worker:"+kind,json.dumps({"time":time.time(),"pid":os.getpid(),
+                    "busy":bool(worker.deadline),"resources":container_resources()}),ex=30)
         except Exception:
             pass
 

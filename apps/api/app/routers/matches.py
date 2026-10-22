@@ -1,6 +1,6 @@
 from typing import Literal
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import exists, select, update
 from app.analysis.service import utcnow, is_current, schedule_owner
 from app.core.config import settings
@@ -11,6 +11,7 @@ from app.routers.lost_cases import owned_case
 from app.routers.public_lost_dogs import notice, photo_scope
 from app.schemas import MatchRead, MatchFeedback
 from app.matching.tracking import record_feedback
+from app.matching.visibility import presentation
 from app.services.access import owner_has_access
 
 router = APIRouter(tags=["matches"])
@@ -36,14 +37,14 @@ def case_matches(case_id: UUID, response: Response, db=Depends(get_db), user=Dep
     has_photo = exists().where(Photo.owner_type == "observation", Photo.owner_id == Observation.id).correlate(Observation)
     rows = db.execute(select(Match, Observation, has_photo).join(Observation, Match.observation_id == Observation.id).where(
         Match.lost_case_id == case_id, Match.is_active.is_(True), Observation.moderation_status == "VISIBLE").order_by((Observation.linked_case_id == case_id).desc().nullslast(), Observation.observed_at.desc(), Match.final_score.desc(), Match.id).limit(100))
-    return {"items": [{"match": MatchRead.model_validate(match), "observation": {"id": observation.id, "public_id": observation.public_id, "description": observation.description,
+    return {"items": [{"match": MatchRead.model_validate(match).model_copy(update={"presentation":presentation(match,user,rank) if match.recommended_at else None}), "observation": {"id": observation.id, "public_id": observation.public_id, "description": observation.description,
         "observed_at": observation.observed_at, "public_location": observation.public_location, "latitude":observation.latitude,"longitude":observation.longitude,
         "source_type":observation.source_type,"photo_url":f"/api/v1/public/observations/{observation.id}/photo" if photo else None,
-        "matching_status":observation.matching_status,"linked_to_notice":observation.linked_case_id==case_id}} for match, observation, photo in rows]}
+        "matching_status":observation.matching_status,"linked_to_notice":observation.linked_case_id==case_id}} for rank,(match, observation, photo) in enumerate(rows,1)]}
 
 
 @router.patch("/matches/{match_id}/feedback", response_model=MatchRead)
-def feedback(match_id: UUID, payload: MatchFeedback, response: Response, db=Depends(get_db), user=Depends(current_user)):
+def feedback(match_id: UUID, payload: MatchFeedback, response: Response, request: Request, db=Depends(get_db), user=Depends(current_user)):
     # Lock the owned case before its matches, as notification delivery does.
     case = db.scalar(select(LostCase).join(Match, Match.lost_case_id == LostCase.id).join(Pet, LostCase.pet_id == Pet.id).where(Match.id == match_id, Pet.owner_id == user.id).with_for_update(of=LostCase))
     if case is None:
@@ -53,13 +54,16 @@ def feedback(match_id: UUID, payload: MatchFeedback, response: Response, db=Depe
         raise HTTPException(status_code=404, detail="Coincidencia no encontrada.")
     if payload.recovered and case.status not in {"ACTIVE", "FOUND"}:
         raise HTTPException(status_code=409, detail="La búsqueda ya está cerrada. Revisá el estado en Mis avisos.")
-    record_feedback(db, match, user, payload)
-    match.status, match.feedback_at = payload.status, utcnow()
+    if payload.recovery_match_id and payload.recovery_match_id!=match.id:
+        raise HTTPException(422,"La coincidencia no corresponde a esta respuesta.")
+    already_recovered=case.status=="FOUND"
+    changed=record_feedback(db, match, user, payload,already_recovered=already_recovered)
+    match.status=payload.status
+    if changed:match.feedback_at=utcnow()
     if payload.recovered:
-        case.status = "FOUND"
-        db.execute(update(Match).where(Match.lost_case_id == case.id).values(is_active=False))
-        db.execute(update(Notification).where(Notification.lost_case_id == case.id).values(is_active=False))
-        db.execute(update(Notification).where(Notification.lost_case_id == case.id, Notification.email_status == "PENDING").values(email_status="CANCELLED"))
+        from app.recovery import recover
+        recover(db,case,user,reason=payload.recovery_reason,match_id=match.id,
+                observation_id=payload.recovery_observation_id,request=request)
     elif payload.status == "FALSE_MATCH":
         for notification in db.scalars(select(Notification).where(Notification.match_id == match.id)):
             notification.is_active = False

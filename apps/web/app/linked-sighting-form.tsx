@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { Place } from "@/lib/places";
+import {analyticsGeo} from "@/lib/places";
 import { lostDogsEndpoint, speciesLabel } from "@/lib/lost-dogs";
 import type { LostDogNotice } from "@/lib/lost-dogs";
 import { localDateTime, sightingMessage } from "@/lib/linked-sightings";
@@ -86,6 +87,7 @@ export function LinkedSightingForm({ caseId }: { caseId: string }) {
     form.set("latitude", String(location.latitude)); form.set("longitude", String(location.longitude));
     if (location.accuracyMeters !== undefined) form.set("location_accuracy_meters", String(Math.min(location.accuracyMeters, 100000)));
     if (location.locality) form.set("public_location", location.locality);
+    form.set("analytics_geo",JSON.stringify(analyticsGeo(location)));
     for (const photo of photos) form.append("photos", photo);
     setBusy(true);
     try {

@@ -17,8 +17,10 @@ export function sameOrigin(request: NextRequest): boolean {
 
 export function proxyHeaders(request: NextRequest): Record<string, string> {
   const address = request.headers?.get("x-mascomatch-client-ip");
-  return process.env.TRUST_PROXY_HEADERS === "true" && address && isIP(address)
-    ? { "X-MascoMatch-Client-IP": address } : {};
+  const analytics: string[]=[];
+  for(const [name,pattern] of [["mm_visitor",/^[A-Za-z0-9_-]{43}$/],["mm_visit",/^[0-9a-f-]{36}\.[0-9a-f]{64}$/]] as const){const value=request.cookies?.get(name)?.value;if(value&&pattern.test(value))analytics.push(`${name}=${value}`);}
+  return {...(process.env.TRUST_PROXY_HEADERS === "true" && address && isIP(address)
+    ? { "X-MascoMatch-Client-IP": address } : {}),...(analytics.length?{Cookie:analytics.join("; ")}:{})};
 }
 
 export function authorization(request: NextRequest): Record<string, string> {

@@ -6,11 +6,13 @@ import { Icon } from "../ui/pictogram";
 import type { IconName } from "../ui/pictogram";
 import type { SessionUser } from "../account-session";
 import type { OperationSection } from "./operations-dashboard";
+import type {AnalyticsSection} from "./analytics-dashboard";
 
-export type AdminView = OperationSection | "matching" | "management";
+export type AdminView = OperationSection | "matching" | "management" | AnalyticsSection;
 const groups: { label: string; items: { view: AdminView; label: string; icon: IconName }[] }[] = [
+  {label:"Datos del producto",items:[{view:"growth",label:"Crecimiento",icon:"chart"},{view:"usage",label:"Uso",icon:"paw"},{view:"analytics-matching",label:"Matching e IA",icon:"spark"},{view:"impact",label:"Impacto",icon:"heart"},{view:"inventory",label:"Inventario potencial",icon:"layers"}]},
   { label: "Plataforma", items: [{ view: "overview", label: "Resumen", icon: "grid" }, { view: "users", label: "Usuarios", icon: "user" }, { view: "publications", label: "Publicaciones", icon: "paw" }] },
-  { label: "Inteligencia", items: [{ view: "jobs", label: "Trabajos", icon: "layers" }, { view: "matching", label: "Coincidencias", icon: "spark" }] },
+  { label: "Inteligencia", items: [{ view: "jobs", label: "Trabajos", icon: "layers" }] },
   { label: "Comunicación", items: [{ view: "mail", label: "Correos", icon: "mail" }, { view: "contacts", label: "Contactos", icon: "message" }] },
   { label: "Control", items: [{ view: "management", label: "Denuncias y correcciones", icon: "shield" }, { view: "audit", label: "Auditoría", icon: "clock" }] },
 ];

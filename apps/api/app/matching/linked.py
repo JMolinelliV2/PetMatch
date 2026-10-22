@@ -100,10 +100,10 @@ def set_result(db, observation, case, pet, status, reasons, score=None, evidence
         match.explanation=reasons
         if evidence:
             for field,value in evidence.items():
-                setattr(match,field,value)
+                if field!="visual_provider":setattr(match,field,value)
         match.is_active=True
         if status == "POSSIBLE_MATCH":
-            record_recommendation(match, "LINKED")
+            record_recommendation(match, "LINKED",visual_provider=(evidence or {}).get("visual_provider"),db=db)
         db.flush()
     elif match:
         match.is_active=False
@@ -199,7 +199,7 @@ def evaluate_sighting(db: Session, observation_id: UUID) -> str:
     if raw is not None and notification_evidence(score,coverage,feature,geo):
         return set_result(db,observation,case,pet,"POSSIBLE_MATCH",geographic+reasons+["Similitud visual entre las fotos"],score,
             {"feature_score":feature,"visual_score":visual,"visual_similarity":raw,"geo_score":geo,
-             "temporal_score":temporal,"evidence_coverage":coverage})
+             "temporal_score":temporal,"evidence_coverage":coverage,"visual_provider":provider})
     return set_result(db, observation, case, pet, "UNVERIFIED", geographic + ["Las fotos no aportaron suficientes rasgos para una comparación automática"])
 
 

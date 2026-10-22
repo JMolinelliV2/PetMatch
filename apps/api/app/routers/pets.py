@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,10 +16,13 @@ router = APIRouter(prefix="/pets", tags=["pets"])
 
 
 @router.post("", response_model=PetRead, status_code=status.HTTP_201_CREATED)
-def create_pet(payload: PetCreate, db: Session = Depends(get_db), user: User = Depends(verified_user)):
+def create_pet(payload: PetCreate, request: Request, db: Session = Depends(get_db), user: User = Depends(verified_user)):
     user=lock_active_user(db,user)
     pet = Pet(owner_id=user.id, **payload.model_dump())
     db.add(pet)
+    db.flush()
+    from app.product_analytics import record
+    record(db,"pet_created",pet.id,request=request,user=user)
     db.commit()
     db.refresh(pet)
     return pet

@@ -14,7 +14,7 @@ import { SightingComparison } from "../ui/sighting-comparison";
 import { PhotoGallery } from "../ui/photo-viewer";
 import { ReportId } from "../ui/report-id";
 type User = { email_verified?: boolean; email_verification_required?: boolean; id: string; name: string; email: string; notification_preferences: { email?: boolean } };
-type Notice = { id: string; kind: string; title: string; body: string; read_at: string | null; archived_at: string | null; created_at: string; lost_case_id: string; lost_case_public_id?: string; observation_public_id?: string; pet_name: string; observed_at: string; public_location: string | null; latitude: number | null; longitude: number | null; reasons: string[]; photo_ids: string[]; email_status: string; match_id: string | null; match_status: string | null; reporter_contact:string|null; linked_to_notice?:boolean; matching_status?:string|null };
+type Notice = { id: string; kind: string; title: string; body: string; read_at: string | null; archived_at: string | null; created_at: string; lost_case_id: string; lost_case_public_id?: string; observation_public_id?: string; pet_name: string; observed_at: string; public_location: string | null; latitude: number | null; longitude: number | null; reasons: string[]; photo_ids: string[]; email_status: string; match_id: string | null; match_status: string | null; presentation?:string|null; reporter_contact:string|null; linked_to_notice?:boolean; matching_status?:string|null };
 type Inbox = { items: Notice[]; unread_count: number; total: number };
 type InboxView = "unread" | "all" | "archived";
 type NoticeAction = "read" | "archive" | "restore";
@@ -223,7 +223,7 @@ export function NotificationsInbox({ selectedId }: { selectedId?: string }) {
           <button type="button" className="text-button" disabled={Boolean(action)} onClick={() => void updateNotice(notice.id, notice.archived_at ? "restore" : "archive")}>{action?.id === notice.id && ["archive", "restore"].includes(action.kind) ? "Guardando…" : notice.archived_at ? "Restaurar notificación" : "Archivar notificación"}</button>
         </div>
         {map === notice.id && notice.latitude !== null && notice.longitude !== null && <LocationMap latitude={notice.latitude} longitude={notice.longitude} editable={false} />}
-        {notice.match_id && <MatchFeedback id={notice.match_id} caseId={notice.lost_case_id} status={notice.match_status} onSaved={result => feedbackSaved(notice.id, result)} />}
+        {notice.match_id && <MatchFeedback presentation={notice.presentation} id={notice.match_id} caseId={notice.lost_case_id} status={notice.match_status} onSaved={result => feedbackSaved(notice.id, result)} />}
         {notice.email_status === "SENT" && <p className="field-help">Alerta enviada también por correo.</p>}
         {notice.email_status === "PREVIEWED" && <p className="field-help">Correo generado en el servidor local de pruebas.</p>}
         {notice.email_status === "FAILED" && <p className="field-help">El correo no pudo enviarse. La notificación quedó guardada acá.</p>}

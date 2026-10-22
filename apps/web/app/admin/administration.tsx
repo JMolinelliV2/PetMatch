@@ -9,6 +9,7 @@ import { OperationsDashboard } from "./operations-dashboard";
 import { AdminDateRange, adminDate, emptyPeriod, periodQuery } from "./date-range";
 import type { AdminPeriod } from "./date-range";
 import { AdminWorkspace } from "./admin-workspace";
+import {AnalyticsDashboard} from "./analytics-dashboard";
 import type { SessionUser } from "../account-session";
 import { AdminFieldLabel, AdminHeading } from "./admin-info";
 type Report = { id: string; target_type: string; target_id: string; public_id: string | null; title: string;
@@ -66,6 +67,6 @@ function PlatformManagement({period,onPeriodChange}:{period:AdminPeriod;onPeriod
 
 function AdminPanel({user,logout}:{user:SessionUser;logout:()=>Promise<void>}) {
   const [period,setPeriod]=useState<AdminPeriod>(emptyPeriod);
-  return <AdminWorkspace user={user} logout={logout}>{(view,navigate)=>view==="matching"?<MatchingDashboard period={period} onPeriodChange={setPeriod}/>:view==="management"?<PlatformManagement period={period} onPeriodChange={setPeriod}/>:<OperationsDashboard section={view} onNavigate={navigate} period={period} onPeriodChange={setPeriod}/>}</AdminWorkspace>;
+  return <AdminWorkspace user={user} logout={logout}>{(view,navigate)=>view==="growth"||view==="usage"||view==="analytics-matching"||view==="impact"||view==="inventory"?<AnalyticsDashboard section={view} period={period} onPeriodChange={setPeriod}/>:view==="matching"?<MatchingDashboard period={period} onPeriodChange={setPeriod}/>:view==="management"?<PlatformManagement period={period} onPeriodChange={setPeriod}/>:<OperationsDashboard section={view} onNavigate={navigate} period={period} onPeriodChange={setPeriod}/>}</AdminWorkspace>;
 }
 export function Administration() { return <AccountSession showAccountHeader={false}>{(user,actions) => user.admin_access ? <AdminPanel user={user} logout={actions.logout}/> : <div className="notice notice-warning"><h2>Acceso restringido</h2><p>Este panel está reservado a la cuenta administradora con su correo confirmado. Tu sesión actual no tiene acceso.</p><div className="location-actions"><Link className="text-button" href="/mi-cuenta">Ir a mi cuenta</Link><button className="text-button" type="button" onClick={()=>void actions.logout()}>Cerrar sesión</button></div></div>}</AccountSession>; }

@@ -1,5 +1,5 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, Response, HTTPException
+from fastapi import APIRouter, Depends, Request, Response, HTTPException
 from sqlalchemy import select
 from app.db.session import get_db
 from app.dependencies import current_user,verified_user
@@ -22,12 +22,19 @@ def dashboard(response: Response,db=Depends(get_db),user=Depends(current_user)):
 
 
 @router.patch("/me/cases/{case_id}",response_model=LostCaseRead)
-def edit_case(case_id:UUID,payload:CaseEdit,response:Response,db=Depends(get_db),user=Depends(verified_user)):
+def edit_case(case_id:UUID,payload:CaseEdit,response:Response,request:Request,db=Depends(get_db),user=Depends(verified_user)):
     case=owned_case(db,case_id,user)
     pet=db.get(Pet,case.pet_id)
     for field,value in payload.pet.model_dump(exclude_unset=True).items():
         setattr(pet,field,value)
-    for field,value in payload.case.model_dump(exclude_unset=True).items():
+    changes=payload.case.model_dump(exclude_unset=True)
+    for key in ("recovery_reason","recovery_match_id","recovery_observation_id"):changes.pop(key,None)
+    if changes.get("status")=="FOUND":
+        from app.recovery import recover
+        recover(db,case,user,reason=payload.case.recovery_reason,match_id=payload.case.recovery_match_id,
+                observation_id=payload.case.recovery_observation_id,request=request)
+        changes.pop("status")
+    for field,value in changes.items():
         setattr(case,field,value)
     if (case.latitude is None)!=(case.longitude is None):
         raise HTTPException(status_code=422,detail="La ubicación necesita un punto completo.")

@@ -34,6 +34,9 @@ def lock_photo_cases(db, owner_type, owner_id):
     # NO KEY UPDATE serializes photos/reminders without blocking matching's foreign-key inserts.
     if owner_type not in {"pet", "lost_case"}:
         return
+    pet_id=owner_id if owner_type=="pet" else db.scalar(select(LostCase.pet_id).where(LostCase.id==owner_id))
+    # Pet -> cases matches account deletion; also serializes photo threshold crossings across uploads.
+    db.scalar(select(Pet.id).where(Pet.id==pet_id).with_for_update(of=Pet,key_share=True))
     scope = LostCase.pet_id == owner_id if owner_type == "pet" else LostCase.id == owner_id
     list(db.scalars(select(LostCase.id).where(scope).order_by(LostCase.id).with_for_update(of=LostCase, key_share=True)))
 

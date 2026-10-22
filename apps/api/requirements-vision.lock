@@ -33,7 +33,7 @@ open_clip_torch==3.2.0
 opentelemetry-api==1.45.1
 packaging==26.3
 pgvector==0.4.2
-pillow==12.3.0
+pillow==13.0.0
 pluggy==1.6.0
 protobuf==7.36.2
 psycopg==3.3.6

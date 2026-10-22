@@ -8,9 +8,10 @@ import { ObservationPhoto } from "../ui/observation-photo";
 import { SightingComparison } from "../ui/sighting-comparison";
 import { MatchScore } from "../ui/match-score";
 import { ReportId } from "../ui/report-id";
+import { useMatchVisibility } from "../product-tracking";
 
 export type Candidate = {
-  match: { id: string; status: string; explanation: string[]; final_score?: number };
+  match: { id: string; status: string; explanation: string[]; final_score?: number; presentation?:string };
   observation: { id: string; public_id?: string; description: string; public_location: string | null; observed_at: string;
     latitude: number | null; longitude: number | null; source_type: string; photo_url: string | null;
     matching_status: string; linked_to_notice: boolean };
@@ -19,7 +20,8 @@ export type Candidate = {
 export function CandidateReport({ candidate, caseId, caseActive, onSaved }: { candidate: Candidate; caseId: string; caseActive: boolean; onSaved: (result: FeedbackSaved) => void }) {
   const [mapOpen, setMapOpen] = useState(false);
   const { match, observation } = candidate;
-  return <article className="analysis-result case-candidate">
+  const visibility=useMatchVisibility(match.presentation);
+  return <article ref={visibility} className="analysis-result case-candidate">
     <div className="case-candidate-summary">
       <div className="case-candidate-photo"><ObservationPhoto id={observation.id} hasPhoto={Boolean(observation.photo_url)} found={observation.source_type === "FOUND_ANIMAL"} /></div>
       <div>

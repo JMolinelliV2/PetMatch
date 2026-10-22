@@ -3,6 +3,7 @@ import "leaflet/dist/leaflet.css";
 import "./globals.css";
 import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
+import { ProductTracking } from "./product-tracking";
 
 export const metadata: Metadata = {
   title: "MascoMatch — Mascotas perdidas",
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es-UY" data-scroll-behavior="smooth">
-      <body><SiteHeader />{children}<SiteFooter /></body>
+      <body><SiteHeader /><ProductTracking />{children}<SiteFooter /></body>
     </html>
   );
 }

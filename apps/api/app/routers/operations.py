@@ -67,8 +67,12 @@ def metrics(authorization: str | None = Header(default=None)):
         raise HTTPException(status_code=404, detail="Not found")
     values = {"mascomatch_ready":float(all(readiness().values())),
               "mascomatch_email_enabled":float(settings.mail_delivery_mode == "smtp")}
+    from app.ops.resources import container_resources
+    for name,value in container_resources().items():values[f'mascomatch_container_{name}{{service="api"}}']=value
     try:
         with SessionLocal() as db:
+            from app.models import ProductEvent
+            values["mascomatch_analytics_rollup_pending"]=db.scalar(select(func.count()).select_from(ProductEvent).where(ProductEvent.aggregated.is_(False))) or 0
             from datetime import timedelta
             from app.ops.ai_health import ai_readiness
             for name,ok in ai_readiness().items():
@@ -112,6 +116,13 @@ def metrics(authorization: str | None = Header(default=None)):
             prewarm=json.loads(redis.get("mascomatch:prewarm:last") or "{}")
             values["mascomatch_gemma_prewarm_ms"]=float(prewarm.get("duration_ms",0))
             values["mascomatch_gemma_prewarm_ready"]=int(prewarm.get("status")=="ready")
+            for kind in ("visual","semantic"):
+                heartbeat=json.loads(redis.get("mascomatch:worker:"+kind) or "{}")
+                if heartbeat:
+                    values[f'mascomatch_worker_busy{{kind="{kind}"}}']=int(bool(heartbeat.get("busy")))
+                    for name,value in heartbeat.get("resources",{}).items():
+                        if name in {"memory_bytes","memory_limit_bytes","cpu_seconds_total","cpu_limit_cores"}:
+                            values[f'mascomatch_container_{name}{{service="worker-{kind}"}}']=float(value)
     except Exception:
         values["mascomatch_ready"] = 0
     return Response("\n".join(f"{name} {value}" for name,value in sorted(values.items()))+"\n",

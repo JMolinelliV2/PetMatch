@@ -58,6 +58,12 @@ def delete_account(db, user):
     # Bulk deletes avoid ORM attempts to null the required owner/pet foreign keys.
     db.execute(delete(LostCase).where(LostCase.id.in_(case_ids)))
     db.execute(delete(Pet).where(Pet.id.in_(pet_ids)))
+    from app.models import ProductEvent, AnalyticsSession, ProductDaily
+    from app.product_analytics import digest
+    db.execute(delete(ProductEvent).where(ProductEvent.user_id==user.id))
+    db.execute(update(AnalyticsSession).where(AnalyticsSession.user_id==user.id).values(user_id=None))
+    # Remove the linkable daily user key; aggregate counts for other visitors remain intact.
+    db.execute(delete(ProductDaily).where(ProductDaily.actor_key==digest("user:"+str(user.id))))
     db.execute(delete(User).where(User.id == user.id))
     db.commit()
 

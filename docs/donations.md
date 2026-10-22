@@ -10,7 +10,7 @@ Los niveles se definen en `apps/web/app/apoyanos/support-levels.ts`:
 | --- | ---: |
 | Amigo | 100 |
 | Colaborador | 300 |
-| Patrocinador | 600 |
+| Aliado | 600 |
 | Impulsor | 1.200 |
 
 Son importes sugeridos en pesos uruguayos, editables en ese archivo. No representan conversiones desde dólares. La interfaz permite elegir aporte puntual o mensual; comienza con puntual. Otro monto admite números enteros desde $U 1, sin un tope comercial, y muestra la ayuda correspondiente si el valor es inválido. El valor debe poder representarse como un entero exacto en JavaScript para evitar redondeos.

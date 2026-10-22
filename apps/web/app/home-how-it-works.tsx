@@ -11,7 +11,7 @@ const steps = [
     image: { src: "/images/how-notice-manypixels.svg", width: 500, height: 500, kind: "library" },
     title: "Publicá su aviso.",
     description: [
-      "Publicar un aviso es gratis. MascoMatch se financia con donaciones. Creá una cuenta y confirmá tu correo para publicar. Contanos cómo es tu mascota, dónde la viste por última vez y cuándo.",
+      "Publicar un aviso es gratis. Si querés colaborar con las mejoras de MascoMatch, podés hacer una donación voluntaria. Creá una cuenta y confirmá tu correo para publicar. Contanos cómo es tu mascota, dónde la viste por última vez y cuándo.",
       "Una foto clara ayuda a reconocerla y facilita compartir el aviso. Las fotos son opcionales: podés agregarlas después desde Mis avisos.",
     ],
   },

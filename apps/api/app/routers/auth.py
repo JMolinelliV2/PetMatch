@@ -48,6 +48,8 @@ def register(payload: RegisterRequest, request: Request, db: Session = Depends(g
         raise HTTPException(status_code=409,detail="An account with this email already exists") from exc
     from app.account_mail import issue_token
     issue_token(db,user,"VERIFY_EMAIL")
+    from app.product_analytics import record
+    record(db,"account_created",user.id,request=request,user=user)
     result = issue_session(db, user)
     request.state.activity_user_id = user.id
     return result
@@ -107,7 +109,7 @@ def request_verification(db=Depends(get_db),user=Depends(current_user)):
 
 
 @router.post("/verify-email")
-def verify_email(payload:VerificationCode,db=Depends(get_db)):
+def verify_email(payload:VerificationCode,request:Request,db=Depends(get_db)):
     from app.account_mail import consume_token
     user=consume_token(db,payload.code,"VERIFY_EMAIL")
     email_changed=False
@@ -124,6 +126,8 @@ def verify_email(payload:VerificationCode,db=Depends(get_db)):
             db.execute(update(AccountToken).where(AccountToken.user_id==user.id,AccountToken.consumed_at.is_(None)).values(consumed_at=utcnow(),email_status="CANCELLED"))
             db.execute(update(AuthSession).where(AuthSession.user_id==user.id,AuthSession.revoked_at.is_(None)).values(revoked_at=utcnow()))
         claim_reserved_access(db, user)
+        from app.product_analytics import record
+        record(db,"email_verified",user.id,request=request,user=user)
         db.execute(update(Notification).where(Notification.owner_id==user.id,Notification.email_status=="PENDING").values(email_available_at=utcnow()))
         db.commit()
     except IntegrityError as exc:
@@ -146,7 +150,7 @@ def password_reset(payload:AccountEmail,db=Depends(get_db)):
 
 
 @router.post("/reset-password")
-def reset_password(payload:ResetPassword,db=Depends(get_db)):
+def reset_password(payload:ResetPassword,request:Request,db=Depends(get_db)):
     from app.account_mail import consume_token
     user=consume_token(db,payload.code,"RESET_PASSWORD")
     if user is None:
@@ -154,6 +158,8 @@ def reset_password(payload:ResetPassword,db=Depends(get_db)):
     user.password_hash=hash_password(payload.password)
     user.email_verified_at=utcnow()
     claim_reserved_access(db, user)
+    from app.product_analytics import record
+    record(db,"email_verified",user.id,request=request,user=user)
     db.execute(update(AuthSession).where(AuthSession.user_id==user.id,AuthSession.revoked_at.is_(None)).values(revoked_at=utcnow()))
     db.execute(update(Notification).where(Notification.owner_id==user.id,Notification.email_status=="PENDING").values(email_available_at=utcnow()))
     db.commit()

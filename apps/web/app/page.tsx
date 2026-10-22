@@ -28,7 +28,7 @@ export default function Home() {
       <HomeHowItWorks />
       <HomeLostAnimals />
       <HomeReviews />
-      <section className="home-support" aria-labelledby="home-support-title"><span className="feature-icon"><Icon name="heart" /></span><div><p className="eyebrow">Apoyo voluntario</p><h2 id="home-support-title">Ayudá a sostener MascoMatch</h2><p>Conocé los niveles de patrocinio y cómo los aportes pueden acompañar las búsquedas de la comunidad.</p></div><Link href="/apoyanos" className="button button-secondary">Conocé cómo apoyar <Icon name="arrow" /></Link></section>
+      <section className="home-support" aria-labelledby="home-support-title"><span className="feature-icon"><Icon name="heart" /></span><div><p className="eyebrow">Apoyo voluntario</p><h2 id="home-support-title">Colaborá con MascoMatch</h2><p>Buscar y reportar mascotas es gratis. Si querés ayudarnos a seguir mejorando, podés hacer un aporte voluntario.</p></div><Link href="/apoyanos" className="button button-secondary">Conocé cómo apoyar <Icon name="arrow" /></Link></section>
     </main>
   );
 }

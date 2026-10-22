@@ -26,7 +26,7 @@ outcome = case(
     else_="pending")
 
 
-def scope(days, source, dataset, from_at=None, to_at=None):
+def scope(days, source, dataset, from_at=None, to_at=None,provider="all",model=None,revision=None):
     filters = [Match.recommended_at.is_not(None)]
     if from_at is not None or to_at is not None:
         filters.extend(period_filters(Match.recommended_at, from_at, to_at))
@@ -36,6 +36,9 @@ def scope(days, source, dataset, from_at=None, to_at=None):
         filters.append(Match.recommendation_source == source)
     if dataset != "all":
         filters.append(Match.recommendation_snapshot["legacy"].as_boolean().is_(dataset == "legacy"))
+    if provider!="all":filters.append(Match.recommendation_snapshot["visual_provider"].as_string()==provider)
+    if model:filters.append(Match.recommendation_snapshot["actual_visual_space"]["model"].as_string()==model)
+    if revision:filters.append(Match.recommendation_snapshot["actual_visual_space"]["revision"].as_string()==revision)
     return filters
 
 
@@ -55,11 +58,13 @@ def counters(db, filters):
 @router.get("")
 def dashboard(response: Response, days: int = Query(default=30, ge=0, le=3650),
               source: SOURCE = "all", dataset: DATASET = "all", result: OUTCOME = "all",
+              provider: Literal["all","pet_reid","open_clip","NONE"]="all",model: str | None=Query(default=None,max_length=120),
+              revision: str | None=Query(default=None,max_length=80),
               from_at: AwareDatetime | None = None, to_at: AwareDatetime | None = None,
               limit: int = Query(default=25, ge=1, le=100), offset: int = Query(default=0, ge=0, le=100000),
               db=Depends(get_db), user=Depends(administrator)):
     response.headers["Cache-Control"] = "no-store"
-    filters = scope(days, source, dataset, from_at, to_at)
+    filters = scope(days, source, dataset, from_at, to_at,provider,model,revision)
     summary = counters(db, filters)
     sources = [{"source": name, **counters(db, [*filters, Match.recommendation_source == name])} for name in ("GENERAL", "LINKED")]
     legacy_count = db.scalar(select(func.count()).select_from(Match).where(*filters, Match.recommendation_snapshot["legacy"].as_boolean().is_(True))) or 0
@@ -73,6 +78,10 @@ def dashboard(response: Response, days: int = Query(default=30, ge=0, le=3650),
     items = [{"id": match.id, "lost_case_public_id": case_record.public_id, "observation_public_id": observation.public_id,
               "pet_name": pet.name, "species": pet.species, "source": match.recommendation_source,
               "outcome": category, "recommended_score": match.recommended_score, "current_score": match.final_score,
+              "feature_score":match.feature_score,"visual_score":match.visual_score,"raw_visual_similarity":match.visual_similarity,
+              "geo_score":match.geo_score,"temporal_score":match.temporal_score,"evidence_coverage":match.evidence_coverage,
+              "distance_meters":match.distance_meters,"recommendation_snapshot":match.recommendation_snapshot,
+              "first_viewed_at":match.first_viewed_at,"first_viewed_rank":match.first_viewed_rank,"best_viewed_rank":match.best_viewed_rank,
               "recommended_at": match.recommended_at, "feedback_at": last_response_at,
               "case_status": case_record.status, "active": match.is_active, "history_count": event_count,
               "legacy": bool(match.recommendation_snapshot.get("legacy"))}

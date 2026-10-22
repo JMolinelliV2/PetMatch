@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,13 +16,16 @@ router = APIRouter(prefix="/observations", tags=["observations"])
 
 
 @router.post("", response_model=ObservationRead, status_code=status.HTTP_201_CREATED)
-def create_observation(payload: ObservationCreate, db: Session = Depends(get_db), user: User = Depends(verified_user)):
+def create_observation(payload: ObservationCreate, request: Request, db: Session = Depends(get_db), user: User = Depends(verified_user)):
     user=lock_active_user(db,user)
     observation = Observation(author_id=user.id, **payload.model_dump())
     db.add(observation)
     db.flush()
     from app.embeddings.reschedule import reschedule_owner
     reschedule_owner(db,"observation",observation.id)
+    from app.product_analytics import record
+    for name in ("sighting_created","sighting_authenticated","sighting_general"):
+        record(db,name,observation.id,request=request,user=user,entity=observation)
     db.commit()
     db.refresh(observation)
     return observation

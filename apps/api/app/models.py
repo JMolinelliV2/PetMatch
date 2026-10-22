@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, JSON, Numeric, String, Text, Uuid, UniqueConstraint, func, insert
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, Numeric, String, Text, Uuid, UniqueConstraint, func, insert
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -141,6 +141,9 @@ class Pet(TimestampMixin, Base):
     distinctive_features: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     collar_description: Mapped[str | None] = mapped_column(String(255))
     microchip_reference: Mapped[str | None] = mapped_column(String(80))
+    evaluation_consent: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    evaluation_consent_version: Mapped[str | None] = mapped_column(String(40))
+    evaluation_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     owner: Mapped[User] = relationship(back_populates="pets")
     lost_cases: Mapped[list["LostCase"]] = relationship(back_populates="pet")
 
@@ -159,6 +162,7 @@ class LostCase(PublicationIdentityMixin, TimestampMixin, Base):
     location_accuracy_meters: Mapped[int | None] = mapped_column(Integer)
     description: Mapped[str] = mapped_column(String(4000), default="", nullable=False)
     public_location: Mapped[str | None] = mapped_column(String(350))
+    analytics_geo: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}", nullable=False)
     search_radius_meters: Mapped[int] = mapped_column(Integer, default=15000, nullable=False)
     pet: Mapped[Pet] = relationship(back_populates="lost_cases")
 
@@ -203,6 +207,7 @@ class Observation(PublicationIdentityMixin, TimestampMixin, Base):
     linked_case_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("lost_cases.id", ondelete="SET NULL"), index=True)
     submission_hash: Mapped[str | None] = mapped_column(String(64))
     public_location: Mapped[str | None] = mapped_column(String(350))
+    analytics_geo: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}", nullable=False)
     matching_status: Mapped[str] = mapped_column(String(32), default="NOT_REQUESTED", server_default="NOT_REQUESTED", index=True, nullable=False)
     matching_score: Mapped[float | None] = mapped_column(Float)
     matching_reasons: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
@@ -318,6 +323,11 @@ class Match(TimestampMixin, Base):
     recommendation_source: Mapped[str | None] = mapped_column(String(24))
     recommended_score: Mapped[float | None] = mapped_column(Float)
     recommendation_snapshot: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}", nullable=False)
+    first_shown_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    first_viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    first_viewed_rank: Mapped[int | None] = mapped_column(Integer)
+    best_viewed_rank: Mapped[int | None] = mapped_column(Integer)
+    viewed_snapshot: Mapped[dict | None] = mapped_column(JSON)
 
 
 class MatchFeedbackEvent(Base):
@@ -331,6 +341,98 @@ class MatchFeedbackEvent(Base):
     recovered: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     score: Mapped[float | None] = mapped_column(Float)
     legacy: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    context_snapshot: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class AnalyticsTracking(Base):
+    __tablename__ = "analytics_tracking"
+    __table_args__ = (CheckConstraint("id = 1", name="ck_single_analytics_tracking"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class AnalyticsVisitor(Base):
+    __tablename__ = "analytics_visitors"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
+
+
+class AnalyticsSession(Base):
+    __tablename__ = "analytics_sessions"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    visitor_id: Mapped[str] = mapped_column(String(64), ForeignKey("analytics_visitors.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
+    returning: Mapped[bool] = mapped_column("is_returning",Boolean, nullable=False)
+
+
+class ProductEvent(Base):
+    """Bounded first-party facts; never arbitrary properties, URLs, coordinates or contact data."""
+    __tablename__ = "product_events"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    deduplication_key: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(40), index=True, nullable=False)
+    page: Mapped[str] = mapped_column(String(24), nullable=False)
+    visitor_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    session_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    actor_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    case_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True),ForeignKey("lost_cases.id",ondelete="SET NULL"),index=True)
+    country: Mapped[str] = mapped_column(String(2), nullable=False)
+    department: Mapped[str] = mapped_column(String(80), nullable=False)
+    locality: Mapped[str] = mapped_column(String(80), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
+    aggregated: Mapped[bool] = mapped_column(Boolean,default=False,server_default="false",nullable=False,index=True)
+
+
+class ProductMilestone(Base):
+    """Compact durable deduplication ledger, including photo thresholds after deletion/retry."""
+    __tablename__ = "product_milestones"
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+
+
+class ProductDaily(Base):
+    """Daily per-actor/session counters with optional case context, without individual event timestamps."""
+    __tablename__ = "product_daily"
+    __table_args__ = (Index("ix_product_daily_day_name", "day", "name"), Index("ix_product_daily_geo_day", "country", "department", "locality", "day"))
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    name: Mapped[str] = mapped_column(String(40), nullable=False)
+    page: Mapped[str] = mapped_column(String(24), nullable=False)
+    visitor_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    session_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    actor_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    case_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True),ForeignKey("lost_cases.id",ondelete="SET NULL"),index=True)
+    country: Mapped[str] = mapped_column(String(2), nullable=False)
+    department: Mapped[str] = mapped_column(String(80), nullable=False)
+    locality: Mapped[str] = mapped_column(String(80), nullable=False)
+    count: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class MatchExposure(Base):
+    __tablename__ = "match_exposures"
+    __table_args__ = (UniqueConstraint("session_id", "match_id", "context", name="uq_match_exposure"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    session_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("analytics_sessions.id", ondelete="CASCADE"), nullable=False)
+    match_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("matches.id", ondelete="CASCADE"), index=True, nullable=False)
+    context: Mapped[str] = mapped_column(String(24), nullable=False)
+    rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    shown_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class RecoveryOutcome(Base):
+    __tablename__ = "recovery_outcomes"
+    lost_case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("lost_cases.id", ondelete="CASCADE"), primary_key=True)
+    owner_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    reason: Mapped[str] = mapped_column(String(32), index=True, nullable=False)
+    match_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("matches.id", ondelete="SET NULL"))
+    observation_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("observations.id", ondelete="SET NULL"))
+    recovered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -47,6 +47,7 @@ def create_photo_metadata(payload: PhotoCreate, db: Session = Depends(get_db), u
 
 @router.post("/upload", response_model=PhotoUploadRead, status_code=status.HTTP_201_CREATED)
 def upload_photo(
+    request: Request,
     owner_type: str = Form(pattern="^(pet|lost_case|observation)$"),
     owner_id: UUID = Form(),
     file: UploadFile = File(),
@@ -79,6 +80,9 @@ def upload_photo(
         lock_photo_cases(db, owner_type, owner_id)
         db.add(photo)
         db.flush()
+        from app.product_analytics import photo_milestones, record
+        photo_milestones(db,photo,user,request)
+        if owner_type=="observation":record(db,"sighting_with_photo",owner_id,request=request,user=user)
         schedule_photo(db, photo)
         mark_related_pending(db, photo.owner_type, photo.owner_id)
         db.commit()

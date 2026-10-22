@@ -18,7 +18,8 @@ export default function SupportPage() {
       <span className="support-mark"><Icon name="heart" /></span>
       <p className="eyebrow">Apoyo voluntario</p>
       <h1>Ayudá a que más mascotas <span className="title-accent">vuelvan a casa.</span></h1>
-      <p>MascoMatch reúne los avisos de quienes buscan a sus mascotas y las pistas de quienes las ven. Tu apoyo puede ayudar a sostener ese encuentro entre familias y comunidad.</p>
+      <p>MascoMatch es gratuito para quienes buscan y reportan mascotas. Si querés ayudarnos a seguir mejorándolo, podés hacer una donación voluntaria.</p>
+      <p className="field-help">Donar no da prioridad, no modifica las coincidencias, no desbloquea funciones y no condiciona el servicio.</p>
       <p className="support-availability"><Icon name="clock" />Los aportes estarán disponibles próximamente.</p>
     </header>
     <SupportOptions />

@@ -1,14 +1,16 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { SessionUser } from "../account-session";
 import { VerifyEmailNotice } from "../verify-email-notice";
 import { useSessionRefresh } from "../use-session-refresh";
 import { AccountLoading } from "../ui/account-loading";
+import { track } from "@/lib/product-analytics";
 
 export function RegistrationForm() {
+  const started=useRef(false);
   const sessionVersion = useSessionRefresh();
   const router = useRouter();
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -87,7 +89,7 @@ export function RegistrationForm() {
     {error && <p role="alert" className="notice notice-warning">{error}</p>}
   </section>;
 
-  return <form className="notification-login account-form" onSubmit={register} aria-busy={busy}>
+  return <form className="notification-login account-form" onSubmit={register} aria-busy={busy} onFocusCapture={()=>{if(!started.current){started.current=true;void track({name:"registration_started",page:"REGISTER"});}}}>
     <fieldset className="section-fields" disabled={busy}>
       <label className="field-label">Nombre o apodo<input className="form-input" name="name" required minLength={1} maxLength={120} autoComplete="nickname" /></label>
       <label className="field-label">Correo electrónico<input className="form-input" name="email" type="email" required maxLength={320} autoComplete="email" /><span className="field-help">Para recibir alertas y recuperar el acceso a tu cuenta.</span></label>

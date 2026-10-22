@@ -36,3 +36,13 @@ groups:
         for: 2m
         labels: {severity: warning}
         annotations: {summary: "Un avistamiento o caso activo espera análisis hace más de cinco minutos"}
+      - alert: MascoMatchAnalyticsAggregationPending
+        expr: mascomatch_analytics_rollup_pending > 0
+        for: 70m
+        labels: {severity: warning}
+        annotations: {summary: "Hay eventos de producto que no pudieron agregarse tras el reintento horario"}
+      - alert: MascoMatchContainerMemoryHigh
+        expr: mascomatch_container_memory_bytes / on(service) mascomatch_container_memory_limit_bytes > 0.85
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: "Un contenedor supera el 85% de su límite de memoria"}

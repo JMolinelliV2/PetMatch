@@ -25,6 +25,7 @@ const navigation = [
     title: "Legales",
     links: [
       { href: "/terminos", label: "Términos y condiciones" },
+      { href: "/privacidad", label: "Privacidad" },
     ],
   },
 ] as const;
@@ -42,17 +43,23 @@ export function SiteFooter() {
             <p className="footer-description">Avisos, fotos y avistamientos para ayudar a que más mascotas vuelvan a casa.</p>
             <p className="footer-free"><Icon name="heart" />Publicar y buscar es gratis.</p>
           </div>
-          {navigation.map(group => (
-            <nav key={group.id} className="footer-navigation" aria-labelledby={group.id}>
-              <h2 id={group.id}>{group.title}</h2>
-              <ul>{group.links.map(link => <li key={link.href}><Link href={link.href}>{link.label}</Link></li>)}</ul>
-            </nav>
-          ))}
+          <div className="footer-navigation-groups">
+            {navigation.map(group => (
+              <nav key={group.id} className="footer-navigation" aria-labelledby={group.id}>
+                <h2 id={group.id}>{group.title}</h2>
+                <ul>{group.links.map(link => <li key={link.href}><Link href={link.href}>{link.label}</Link></li>)}</ul>
+              </nav>
+            ))}
+          </div>
           <section className="footer-community" aria-labelledby="footer-community-title">
-            <h2 id="footer-community-title">Sumate a MascoMatch</h2>
-            <p>Tus ideas y tu apoyo ayudan a mejorar la plataforma.</p>
-            <Link href="/contacto" className="footer-contact">Contacto y sugerencias <Icon name="arrow" /></Link>
-            <Link href="/apoyanos" className="button footer-support"><Icon name="heart" />Conocé cómo apoyar</Link>
+            <div className="footer-community-copy">
+              <h2 id="footer-community-title">Sumate a MascoMatch</h2>
+              <p>Tus ideas y tu apoyo ayudan a mejorar la plataforma.</p>
+            </div>
+            <div className="footer-community-actions">
+              <Link href="/contacto" className="footer-contact">Contacto y sugerencias <Icon name="arrow" /></Link>
+              <Link href="/apoyanos" className="button footer-support"><Icon name="heart" />Conocé cómo apoyar</Link>
+            </div>
           </section>
         </div>
         <div className="footer-bottom">

@@ -80,6 +80,7 @@ class RateLimitMiddleware:
         group="auth" if path.startswith("/api/v1/auth/") and scope["method"]=="POST" else "read" if scope["method"] in {"GET","HEAD"} else "publish"
         if path=="/api/v1/auth/register" and scope["method"]=="POST":group="register"
         if path.rstrip("/")=="/api/v1/contact" and scope["method"]=="POST":group="contact"
+        if path.rstrip("/")=="/api/v1/analytics/events" and scope["method"]=="POST":group="analytics"
         seconds=3600 if group in {"register", "contact"} else 60
         authorization=headers.get(b"authorization",b"").decode("utf-8",errors="ignore")
         if group not in {"auth","register","contact"} and authorization.startswith("Bearer "):
@@ -89,6 +90,8 @@ class RateLimitMiddleware:
         budgets = [((group, actor), limit, seconds)]
         if group == "contact":
             budgets.append((("contact-daily", "all"), settings.rate_limit_contact_daily, 86400))
+        if group == "analytics":
+            budgets.append((("analytics-daily","all"),settings.rate_limit_analytics_daily,86400))
         for key, budget, window in budgets:
             if settings.rate_limit_backend == "redis":
                 if self.shared is None:

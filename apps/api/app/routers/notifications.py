@@ -14,6 +14,7 @@ from app.dependencies import current_user
 from app.models import LostCase, Match, Notification, Observation, Pet, Photo, User
 from app.schemas import NotificationList, NotificationRead
 from app.routers.photo_gallery import gallery_photo_response
+from app.matching.visibility import presentation
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -38,6 +39,7 @@ def serialize(db, row):
     author=db.get(User,observation.author_id) if observation.share_contact and observation.author_id else None
     photos = list(db.scalars(select(Photo.id).where(Photo.owner_type == "observation", Photo.owner_id == observation.id).order_by(Photo.created_at, Photo.id)))
     return NotificationRead(
+        presentation=presentation(match,pet.owner,1,"NOTIFICATION") if match and match.recommended_at else None,
         id=notification.id, kind=notification.kind, title=notification.title, body=notification.body,
         read_at=notification.read_at, created_at=aware(notification.created_at), lost_case_id=case.id,
         lost_case_public_id=case.public_id, observation_public_id=observation.public_id,
@@ -110,7 +112,12 @@ def restore_notification(notification_id: UUID, response: Response, db: Session 
 @router.get("/{notification_id}", response_model=NotificationRead)
 def get_notification(notification_id: UUID, response: Response, db: Session = Depends(get_db), user: User = Depends(current_user)):
     response.headers["Cache-Control"] = "no-store"
-    return serialize(db, owned_row(db, notification_id, user))
+    result=serialize(db, owned_row(db, notification_id, user))
+    match=db.get(Match,result.match_id) if result.match_id else None
+    if match and match.recommended_at:
+        from app.matching.visibility import presentation
+        result.presentation=presentation(match,user,1,"NOTIFICATION")
+    return result
 
 
 @router.get("/{notification_id}/photos/{photo_id}")

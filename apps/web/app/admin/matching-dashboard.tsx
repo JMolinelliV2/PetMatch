@@ -10,6 +10,8 @@ import { AdminFieldLabel, AdminHeading, AdminLabel } from "./admin-info";
 type Outcome = "positive" | "false" | "uncertain" | "pending";
 type Counts = Record<Outcome, number> & { total: number; decided: number; reviewed: number; positive_rate: number | null; review_rate: number | null };
 type Recommendation = {
+  feature_score:number;visual_score:number|null;raw_visual_similarity:number|null;geo_score:number;temporal_score:number;evidence_coverage:number;distance_meters:number;
+  recommendation_snapshot:Record<string,unknown>;first_viewed_at:string|null;first_viewed_rank:number|null;best_viewed_rank:number|null;
   id: string; lost_case_public_id: string; observation_public_id: string; pet_name: string; species: string;
   source: "GENERAL" | "LINKED"; outcome: Outcome; recommended_score: number | null; current_score: number;
   recommended_at: string; feedback_at: string | null; case_status: string; active: boolean; history_count: number; legacy: boolean;
@@ -50,7 +52,7 @@ function ResponseHistory({ id }: { id: string }) {
   </div>;
 }
 
-export function MatchingDashboard({period,onPeriodChange}:{period:AdminPeriod;onPeriodChange:(value:AdminPeriod)=>void}) {
+export function MatchingDashboard({period,onPeriodChange,fixedFilters}:{period:AdminPeriod;onPeriodChange:(value:AdminPeriod)=>void;fixedFilters?:Record<string,string>}) {
   const fieldId = useId();
   const [source, setSource] = useState("all");
   const [dataset, setDataset] = useState("all");
@@ -63,14 +65,14 @@ export function MatchingDashboard({period,onPeriodChange}:{period:AdminPeriod;on
   useEffect(() => {
     const controller = new AbortController();
     setData(null); setError(""); setHistory(null);
-    const query = new URLSearchParams({ days: "0", ...periodQuery(period), source, dataset, result, offset: String(offset) });
+    const query = new URLSearchParams({ days: "0", ...periodQuery(period), source, dataset, result, offset: String(offset),...fixedFilters });
     void fetch(`/api/admin/matching?${query}`, { cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]) }).then(async response => {
       if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? "Tu sesión no tiene acceso al panel. Ingresá con la cuenta administradora y su correo confirmado." : "No pudimos cargar las recomendaciones.");
       const next: Dashboard = await response.json();
       if (!controller.signal.aborted) setData(next);
     }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error && cause.name !== "TimeoutError" ? cause.message : "No pudimos cargar el seguimiento. Revisá tu sesión e intentá nuevamente."); });
     return () => controller.abort();
-  }, [period, source, dataset, result, offset, refresh]);
+  }, [period, source, dataset, result, offset, refresh,JSON.stringify(fixedFilters)]);
   function filter(setter: (value: string) => void, value: string) { setter(value); setOffset(0); }
   const counts = data?.summary;
   return <section className="admin-matching" aria-labelledby="admin-matching-title">
@@ -78,7 +80,7 @@ export function MatchingDashboard({period,onPeriodChange}:{period:AdminPeriod;on
     <AdminDateRange value={period} onApply={next => { onPeriodChange(next); setOffset(0); }} />
     <p className="field-help">El período se aplica a la fecha en que se generó la recomendación.</p>
     <div className="admin-matching-filters">
-      <div className="field-label"><AdminFieldLabel htmlFor={`${fieldId}-source`} label="Origen" help="Permite consultar recomendaciones de la búsqueda general o de reportes enviados desde una ficha que fueron considerados una posible coincidencia." /><select id={`${fieldId}-source`} className="form-input" value={source} onChange={event => filter(setSource, event.target.value)}><option value="all">Todos los orígenes</option><option value="GENERAL">Búsqueda general</option><option value="LINKED">Desde un aviso</option></select></div>
+      {!fixedFilters&&<div className="field-label"><AdminFieldLabel htmlFor={`${fieldId}-source`} label="Origen" help="Permite consultar recomendaciones de la búsqueda general o de reportes enviados desde una ficha que fueron considerados una posible coincidencia." /><select id={`${fieldId}-source`} className="form-input" value={source} onChange={event => filter(setSource, event.target.value)}><option value="all">Todos los orígenes</option><option value="GENERAL">Búsqueda general</option><option value="LINKED">Desde un aviso</option></select></div>}
       <div className="field-label"><AdminFieldLabel htmlFor={`${fieldId}-dataset`} label="Registro" help="Distingue registros creados desde el inicio del seguimiento de registros anteriores recuperados de la información disponible. Los anteriores pueden tener un historial incompleto." /><select id={`${fieldId}-dataset`} className="form-input" value={dataset} onChange={event => filter(setDataset, event.target.value)}><option value="all">Todos los registros</option><option value="live">Desde el inicio del seguimiento</option><option value="legacy">Registros anteriores</option></select></div>
     </div>
     {error && <p role="alert" className="notice notice-warning">{error}</p>}
@@ -103,6 +105,7 @@ export function MatchingDashboard({period,onPeriodChange}:{period:AdminPeriod;on
         <div className="admin-recommendation-ids"><ReportId publicId={item.lost_case_public_id} /><ReportId publicId={item.observation_public_id} label="ID del reporte" /></div>
         <dl className="admin-recommendation-details"><div><dt><AdminLabel label="Recomendada" /></dt><dd><time dateTime={item.recommended_at}>{date(item.recommended_at)}</time></dd></div><div><dt><AdminLabel label="Respuesta más reciente" /></dt><dd>{item.feedback_at ? <time dateTime={item.feedback_at}>{date(item.feedback_at)}</time> : "Sin respuesta"}</dd></div><div><dt><AdminLabel label={item.legacy ? "Puntaje recuperado" : "Puntaje al recomendar"} /></dt><dd>{score(item.recommended_score)}</dd></div><div><dt><AdminLabel label="Estado actual de la propuesta" /></dt><dd>{item.active ? "Disponible" : "Retirada o búsqueda cerrada"}</dd></div></dl>
         {item.legacy && <p className="field-help">Registro anterior al seguimiento.</p>}
+        <details><summary>Inspeccionar evidencia, rank y versión</summary><dl className="admin-recommendation-details">{Object.entries({"Puntaje actual":item.current_score,"Características":item.feature_score,"Visual calibrado":item.visual_score,"Similitud visual sin calibrar":item.raw_visual_similarity,"Geografía":item.geo_score,"Tiempo":item.temporal_score,"Cobertura":item.evidence_coverage,"Distancia (m)":item.distance_meters,"Primer rank visto":item.first_viewed_rank,"Mejor rank visto":item.best_viewed_rank}).map(([label,value])=><div key={label}><dt><AdminLabel label={label} help="Evidencia técnica para revisar una recomendación. El puntaje no representa probabilidad de identidad."/></dt><dd>{value==null?"Sin registro":number(value)}</dd></div>)}</dl><p>Primera vista: {item.first_viewed_at?date(item.first_viewed_at):"Sin registro"}</p><pre className="analytics-version">{JSON.stringify(item.recommendation_snapshot,null,2)}</pre></details>
         <button type="button" className="text-button" aria-expanded={history === item.id} aria-controls={`history-${item.id}`} onClick={() => setHistory(current => current === item.id ? null : item.id)}>{history === item.id ? "Ocultar historial" : "Ver historial de respuestas"}{item.history_count > 0 && ` (${item.history_count})`}</button>
         <div id={`history-${item.id}`} hidden={history !== item.id}>{history === item.id && <ResponseHistory id={item.id} />}</div>
       </article>)}</div>}

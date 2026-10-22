@@ -22,7 +22,7 @@ numpy==2.5.3
 opentelemetry-api==1.45.1
 packaging==26.3
 pgvector==0.4.2
-pillow==12.3.0
+pillow==13.0.0
 pluggy==1.6.0
 psycopg==3.3.6
 psycopg-binary==3.3.6

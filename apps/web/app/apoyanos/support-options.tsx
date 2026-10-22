@@ -28,7 +28,7 @@ export function SupportOptions() {
       </div>
     </fieldset>
     <fieldset className="support-levels">
-      <legend className="sr-only">Nivel de patrocinio</legend>
+      <legend className="sr-only">Aporte voluntario</legend>
       <div className="support-level-grid">
         {supportLevels.map((item, index) => <label key={item.id} className={`support-level ${selected === item.id ? "is-selected" : ""}`}>
           <input type="radio" name={`${groupId}-level`} value={item.id} checked={selected === item.id} onChange={() => { setSelected(item.id); setCustomTouched(false); }} />

@@ -4,6 +4,7 @@ export type Place = {
   detail: string;
   locality?: string;
   city?: string;
+  department?: string;
   countryCode?: string;
   distanceMeters?: number;
   latitude: number;
@@ -57,12 +58,17 @@ export function normalizePlaces(payload: unknown, limit = 6): Place[] {
     seen.add(id);
     const rawCountry = text(properties.countrycode || properties.country_code).toUpperCase();
     const countryCode = /^[A-Z]{2}$/.test(rawCountry) ? rawCountry : undefined;
-    places.push({ id, label, detail, locality, city: text(properties.city), countryCode, latitude, longitude, source: "search" });
+    places.push({ id, label, detail, locality, city: text(properties.city), department:text(properties.state),countryCode, latitude, longitude, source: "search" });
   }
   return places.slice(0, limit);
 }
 
 export type SearchOrigin = { latitude: number; longitude: number; countryCode: string };
+
+export function analyticsGeo(place?:Place|null){
+  const coarse=(value?:string)=>value&&value.length<=80&&/^[\p{L} '\-.,()]+$/u.test(value)?value:"unknown";
+  return {country:place?.countryCode&&/^[A-Z]{2}$/.test(place.countryCode)?place.countryCode:"ZZ",department:coarse(place?.department),locality:coarse(place?.city)};
+}
 
 export function countryName(code: string): string {
   return new Intl.DisplayNames(["es"], { type: "region" }).of(code) || code;

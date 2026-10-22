@@ -4,6 +4,8 @@ Repositorio: [JMolinelliV2/MascoMatch](https://github.com/JMolinelliV2/MascoMatc
 
 Para entender el proyecto: [qué hace cada tecnología y cómo funciona un aviso](docs/architecture.md).
 
+Medición propia del producto, coincidencias e impacto: [definiciones de analytics](docs/analytics.md), [diseño del panel](docs/analytics-design.md) e [informe de validación](docs/analytics-delivery-report.md).
+
 Mi cuenta permite [editar contacto, confirmar un nuevo correo y eliminar la cuenta conservando los avistamientos](docs/account-management.md).
 
 Cada publicación tiene un [ID público único y permanente](docs/publication-identifiers.md), visible y copiable, como `MM-000123`.
@@ -218,7 +220,7 @@ La portada, los formularios, el catálogo y Mis avisos comparten la paleta de Ma
 
 ## Apoyanos: aportes voluntarios
 
-La página pública `/apoyanos` se abre desde el botón **Apoyanos**, siempre visible en el encabezado, y desde un bloque de la portada. Presenta cuatro niveles de patrocinio en pesos uruguayos: Amigo ($U 100), Colaborador ($U 300), Patrocinador ($U 600) e Impulsor ($U 1.200), con elección puntual o mensual y monto personalizado.
+La página pública `/apoyanos` se abre desde el botón **Apoyanos**, siempre visible en el encabezado, y desde un bloque de la portada. Presenta cuatro niveles de aporte voluntario en pesos uruguayos: Amigo ($U 100), Colaborador ($U 300), Aliado ($U 600) e Impulsor ($U 1.200), con elección puntual o mensual y monto personalizado.
 
 La selección es una vista previa en el navegador; no se guarda como donación ni inicia un cobro. El botón **Donaciones próximamente** permanece deshabilitado hasta integrar los pagos. Publicar avisos y reportar avistamientos sigue siendo gratuito. [Alcance y configuración de los aportes](docs/donations.md).
 

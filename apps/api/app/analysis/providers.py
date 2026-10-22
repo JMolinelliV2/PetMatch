@@ -86,6 +86,7 @@ class OllamaProvider(ExtractionProvider):
         try:
             async with httpx.AsyncClient(timeout=timeout,follow_redirects=False,trust_env=False) as client:
                 metadata=await model_metadata(self.model,self.base_url,client=client)
+                if metadata.get("revision"):self.last_metrics["model_revision"]=metadata["revision"]
                 capabilities=metadata["capabilities"]
                 if source=="image" and "vision" not in capabilities:
                     raise ProviderError("MODEL_HAS_NO_VISION",retryable=False)

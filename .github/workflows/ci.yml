@@ -29,7 +29,7 @@ jobs:
             if [ "$(docker inspect -f '{{.State.Health.Status}}' migration-db)" = healthy ]; then break; fi
             sleep 2
           done
-          python -m pytest apps/api/tests/test_visual_migrations_integration.py -q -p no:cacheprovider
+          python -m pytest apps/api/tests/test_visual_migrations_integration.py apps/api/tests/test_analytics_postgres.py -q -p no:cacheprovider
         env:
           PYTHONPATH: apps/api
           RUN_VISUAL_MIGRATION_TESTS: "1"

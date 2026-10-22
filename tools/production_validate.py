@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 from production_init import initialize
+from production_apply import set_flags
 
 ROOT=Path(__file__).resolve().parents[1]
 PROJECT="mascomatch-prod-smoke"
@@ -15,6 +16,7 @@ def main():
     args=parser.parse_args()
     directory=ROOT/"real-data"/"production-preview"
     if not (directory/".env.production").exists():initialize(directory)
+    set_flags(directory/".env.production",{"AI_ENABLED":"false","EMBEDDINGS_ENABLED":"false"})
     private=directory/".secrets"
     password=private/"smtp_password"
     password.chmod(0o600);password.write_text("disposable-mailpit-only\n");password.chmod(0o444)

@@ -1,6 +1,22 @@
 # Preparación para producción
 
-Actualizado el 15 de octubre de 2026. Este archivo describe un despliegue Docker en un servidor Linux. No publica automáticamente el dominio ni contrata servicios.
+Actualizado el 21 de octubre de 2026. Este archivo describe un despliegue Docker en un servidor Linux. No publica automáticamente el dominio ni contrata servicios.
+
+## Lanzamiento del producto y medición propia — 21 de octubre
+
+El despliegue utiliza el producto completo: registro, búsqueda, reportes, Pet-ReID/OpenCLIP/Gemma locales, alertas y recuperación. No se publican listas de espera ni demostraciones simuladas. Los modelos no se descargan durante solicitudes públicas. Las métricas y sus límites están definidos en [analytics](analytics.md).
+
+Antes de actualizar una base existente, detener API/workers, generar y verificar un respaldo y ejecutar `alembic upgrade head` con la imagen nueva. La revisión actual es `0026_analytics_rollup`; conserva íntegramente las tablas operativas, features, vectores e historial. La cadena incluye una revisión histórica ya aplicada que se conserva por compatibilidad; no habilita rutas ni un modo de acceso distinto.
+
+El procedimiento de despliegue completo sigue siendo `python3 tools/production_apply.py deploy --with-ai`. La primera instalación de Gemma requiere la aceptación explícita de sus términos por el responsable; una instalación existente puede verificarse sin volver a descargarla. No se contrataron servidores ni se aceptaron términos en nombre del responsable durante este cambio.
+
+Configurar `ANALYTICS_ENABLED`, sus retenciones y los límites `RATE_LIMIT_ANALYTICS` / `RATE_LIMIT_ANALYTICS_DAILY`. La decisión jurídica sobre consentimiento previo de estas cookies debe resolverse para los países atendidos. Si está pendiente, se puede desactivar analytics sin bloquear el producto. No se asume que las cookies estén exentas de consentimiento.
+
+La limpieza de analytics corre cada hora en los procesos de API: reintenta agregados pendientes con bloqueos de fila y expira eventos a los 90 días. Los contadores diarios duran 730 días. Prometheus observa agregados pendientes y memoria; CPU/cola/utilización se consultan según la tabla de operación de la guía. Verificar esas alertas y la restauración de respaldos en el servidor real.
+
+`python3 tools/production_validate.py` prueba un stack desechable sin puertos públicos, con correo restringido a `example.test` en Mailpit y sin inferencia pesada. No se debe reemplazar ese aislamiento por cuentas de prueba en producción. Los tests de inferencia real siguen separados y no representan una evaluación de eficacia con animales diferentes.
+
+La actualización a Pillow 13.0.0 corrige los avisos detectados en la auditoría del procesamiento de imágenes. Se deben reconstruir también los workers y las herramientas operativas, además de API/web.
 
 ## Cambios
 

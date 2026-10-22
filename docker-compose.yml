@@ -47,6 +47,13 @@ services:
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app"
     environment: &backend_environment
       WATCHFILES_FORCE_POLLING: "true"
+      ANALYTICS_ENABLED: ${ANALYTICS_ENABLED:-true}
+      RATE_LIMIT_ANALYTICS: ${RATE_LIMIT_ANALYTICS:-120}
+      RATE_LIMIT_ANALYTICS_DAILY: ${RATE_LIMIT_ANALYTICS_DAILY:-200000}
+      ANALYTICS_VISITOR_DAYS: ${ANALYTICS_VISITOR_DAYS:-180}
+      ANALYTICS_SESSION_MINUTES: ${ANALYTICS_SESSION_MINUTES:-30}
+      ANALYTICS_RAW_DAYS: ${ANALYTICS_RAW_DAYS:-90}
+      ANALYTICS_DAILY_DAYS: ${ANALYTICS_DAILY_DAYS:-730}
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://mascomatch:change-me-locally@db:5432/mascomatch}
       JWT_SECRET: ${JWT_SECRET:-replace-with-a-long-random-secret}
       ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-60}

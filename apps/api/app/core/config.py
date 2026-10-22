@@ -12,6 +12,13 @@ class Settings(BaseSettings):
 
     app_env: Literal["development", "production", "test"] = "development"
     runtime_role: Literal["api", "worker", "ops", "migrate"] = "api"
+    analytics_enabled: bool = True
+    analytics_visitor_days: int = Field(default=180, ge=1, le=365)
+    analytics_session_minutes: int = Field(default=30, ge=5, le=120)
+    analytics_raw_days: int = Field(default=90, ge=1, le=180)
+    analytics_daily_days: int = Field(default=730, ge=180, le=1825)
+    rate_limit_analytics: int = Field(default=120, ge=1, le=600)
+    rate_limit_analytics_daily: int = Field(default=200000,ge=100,le=10000000)
     database_url: str = Field(default="postgresql+psycopg://mascomatch:mascomatch@localhost:5432/mascomatch", repr=False)
     jwt_secret: str = Field(default="local-development-only-change-this-secret", repr=False)
     database_url_file: str | None = None

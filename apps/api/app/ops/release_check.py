@@ -19,8 +19,10 @@ def main():
         checks["backup_recent"]=0<=time.time()-last<=90000
     checks["smtp_configured"]=settings.mail_delivery_mode=="smtp" and bool(settings.smtp_username) and bool(settings.smtp_password.get_secret_value())
     if args.send_test_email:
-        from email_validator import validate_email
-        target=validate_email(args.send_test_email,check_deliverability=False).normalized
+        import re
+        target=args.send_test_email.strip().lower()
+        if len(target)>320 or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+",target):
+            parser.error("Provide a valid operator email address")
         from app.notifications.email import send_message
         message=EmailMessage()
         message["From"]=settings.smtp_from

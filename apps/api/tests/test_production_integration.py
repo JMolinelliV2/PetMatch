@@ -26,6 +26,11 @@ def test_encrypted_database_and_photo_recovery():
         control.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
         created=True
         client.create_bucket(Bucket=bucket)
+        with psycopg.connect(connection_url(settings.database_url)) as source:
+            assert source.execute("SELECT version_num FROM alembic_version").fetchone()[0]=="0026_analytics_rollup"
+            assert source.execute("SELECT count(*) FROM product_events WHERE name='account_created' AND visitor_id IS NOT NULL").fetchone()[0]>=1
+            assert source.execute("SELECT count(*) FROM recovery_outcomes WHERE reason='OTHER'").fetchone()[0]>=1
+            assert source.execute("SELECT count(*) FROM product_events WHERE NOT aggregated").fetchone()[0]==0
         backup=create_backup("/backups")
         settings.s3_bucket=bucket
         restore_backup(backup,target_url)
@@ -33,6 +38,8 @@ def test_encrypted_database_and_photo_recovery():
             cases=restored.execute("SELECT count(*) FROM lost_cases").fetchone()[0]
             photos=restored.execute("SELECT storage_key FROM photos").fetchall()
             assert cases>=1 and photos
+            assert restored.execute("SELECT count(*) FROM analytics_tracking").fetchone()[0]==1
+            assert restored.execute("SELECT count(*) FROM product_daily").fetchone()[0]>=1
             for (key,) in photos:
                 source=client.get_object(Bucket=original_bucket,Key=key)["Body"]
                 recovery=client.get_object(Bucket=bucket,Key=key)["Body"]

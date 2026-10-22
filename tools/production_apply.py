@@ -86,7 +86,7 @@ def main():
             compose(*gemma, "--accept-gemma-terms" if args.accept_gemma_terms else "--check")
         if args.with_ai:
             set_flags(path,{"AI_ENABLED":"true","EMBEDDINGS_ENABLED":"true"})
-        compose("run","--rm","--no-deps","worker","python","-m","app.analysis.requeue","--workers-stopped")
+        compose("run","--rm","--no-deps","api","python","-m","app.analysis.requeue","--workers-stopped")
     else:
         compose("stop","api","worker","worker-ai")
         if args.action=="fallback":
@@ -95,7 +95,7 @@ def main():
             set_flags(path,{"AI_ENABLED":"false"})
         elif args.action=="resume-ai":
             set_flags(path,{"AI_ENABLED":"true","EMBEDDINGS_ENABLED":"true","PET_REID_ENABLED":"true"})
-        compose("run","--rm","--no-deps","worker","python","-m","app.analysis.requeue","--workers-stopped")
+        compose("run","--rm","--no-deps","api","python","-m","app.analysis.requeue","--workers-stopped")
     configuration=read_config(path)
     if configuration.get("EMBEDDINGS_ENABLED")=="true":
         compose("run","--rm","--no-deps","worker","python","-m","app.embeddings.backfill","--retry-failed")

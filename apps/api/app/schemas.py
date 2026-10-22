@@ -106,7 +106,33 @@ class PetRead(ORMModel):
     updated_at: datetime
 
 
+class CoarseGeo(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    country: str=Field(default="ZZ",pattern="^[A-Z]{2}$")
+    department: str=Field(default="unknown",max_length=80)
+    locality: str=Field(default="unknown",max_length=80)
+
+    @field_validator("department","locality")
+    @classmethod
+    def coarse_label(cls,value):
+        value=value.strip()
+        if not value or any(not (char.isalpha() or char in " '-.,()") for char in value):
+            raise ValueError("Indicar únicamente una zona general, sin direcciones ni datos de contacto.")
+        return value
+
+
+RecoveryReason=Literal["MASCOMATCH_MATCH","MASCOMATCH_SIGHTING","SOCIAL_MEDIA","WHATSAPP","VET_OR_SHELTER",
+                       "STREET_OR_POSTERS","RETURNED_ALONE","OTHER","PREFER_NOT_TO_SAY"]
+
+
+class RecoveryData(BaseModel):
+    recovery_reason: RecoveryReason="PREFER_NOT_TO_SAY"
+    recovery_match_id: UUID | None=None
+    recovery_observation_id: UUID | None=None
+
+
 class LostCaseCreate(BaseModel):
+    analytics_geo: CoarseGeo=Field(default_factory=CoarseGeo)
     pet_id: UUID
     lost_at: datetime
     last_seen_at: datetime | None = None
@@ -124,7 +150,8 @@ class LostCaseCreate(BaseModel):
         return self
 
 
-class LostCaseUpdate(BaseModel):
+class LostCaseUpdate(RecoveryData):
+    analytics_geo: CoarseGeo | None=None
     status: Literal["ACTIVE", "FOUND", "CLOSED", "CANCELLED"] | None = None
     lost_at: datetime | None = None
     last_seen_at: datetime | None = None
@@ -134,6 +161,12 @@ class LostCaseUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=4000)
     public_location: str | None = Field(default=None, max_length=350)
     search_radius_meters: int | None = Field(default=None, ge=100, le=200000)
+
+    @field_validator("analytics_geo")
+    @classmethod
+    def non_null_geo(cls,value):
+        if value is None:raise ValueError("La zona general no puede ser null.")
+        return value
 
 
 class LostCaseRead(ORMModel):
@@ -185,6 +218,7 @@ class PublicLostDogList(BaseModel):
 
 
 class ObservationCreate(BaseModel):
+    analytics_geo: CoarseGeo=Field(default_factory=CoarseGeo)
     species: Species
     sex: Sex = "unknown"
     primary_color: str = Field(default="unknown",max_length=40)
@@ -207,6 +241,7 @@ class ObservationCreate(BaseModel):
 
 
 class ObservationUpdate(BaseModel):
+    analytics_geo: CoarseGeo | None=None
     species: Species | None = None
     sex: Sex | None = None
     primary_color: str | None = Field(default=None,max_length=40)
@@ -300,6 +335,7 @@ class LinkedSightingRead(BaseModel):
 
 
 class NotificationRead(BaseModel):
+    presentation: str | None=None
     id: UUID
     kind: str
     title: str
@@ -326,6 +362,7 @@ class NotificationRead(BaseModel):
 
 
 class MatchRead(ORMModel):
+    presentation: str | None=None
     id: UUID
     lost_case_id: UUID
     observation_id: UUID
@@ -341,7 +378,7 @@ class MatchRead(ORMModel):
     created_at: datetime
 
 
-class MatchFeedback(BaseModel):
+class MatchFeedback(RecoveryData):
     model_config = ConfigDict(extra="forbid")
     status: Literal["CONFIRMED_RELEVANT", "FALSE_MATCH", "RESOLVED"]
     recovered: bool = Field(default=False, strict=True)

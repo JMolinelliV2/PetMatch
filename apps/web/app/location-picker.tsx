@@ -159,7 +159,7 @@ export function LocationPicker({ value, onChange, required = false, lost = false
       if (!response.ok || !data.places?.[0]) throw new Error("No address");
       if (requestId !== operation.current) return;
       const address: Place = data.places[0];
-      const resolved = { ...place, label: address.label, detail: address.detail, locality: address.locality, countryCode: address.countryCode };
+      const resolved = { ...place, label: address.label, detail: address.detail, locality: address.locality, city:address.city, department:address.department, countryCode: address.countryCode };
       onChange(resolved);
       setQuery(resolved.label);
     } catch {
@@ -207,7 +207,7 @@ export function LocationPicker({ value, onChange, required = false, lost = false
         const data = await response.json();
         if (response.ok && data.places?.[0]) {
           place = { ...place, label: data.places[0].label, detail: data.places[0].detail,
-            locality: data.places[0].locality, countryCode: data.places[0].countryCode };
+            locality: data.places[0].locality, city:data.places[0].city, department:data.places[0].department, countryCode: data.places[0].countryCode };
         }
       } catch { /* GPS remains usable when reverse search is unavailable. */ }
       if (requestId === operation.current) {

@@ -179,7 +179,7 @@ def evaluate_observation(db, identity):
         for field, value in {"feature_score": feature, "visual_score": visual, "visual_similarity": raw_visual, "geo_score": geo,
             "temporal_score": temporal, "final_score": score, "evidence_coverage": coverage, "distance_meters": distance, "explanation": reasons, "is_active": True}.items():
             setattr(match,field,value)
-        record_recommendation(match, "GENERAL")
+        record_recommendation(match, "GENERAL",visual_provider=visual_provider,db=db)
         db.flush()
         ranked.append(match)
         if notification_evidence(score,coverage,feature,geo) and match.status not in {"FALSE_MATCH", "RESOLVED"} and observation.author_id != pet.owner_id:
