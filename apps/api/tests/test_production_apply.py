@@ -49,6 +49,7 @@ def test_deploy_backs_up_existing_schema_before_migration_and_keeps_pause(tmp_pa
     monkeypatch.setattr(tool.subprocess,"run",lambda cmd,**kwargs:(calls.append(cmd) or SimpleNamespace(stdout="t\n" if "psql" in cmd else "")))
     tool.main()
     backup=next(i for i,c in enumerate(calls) if "app.ops.backup" in c)
+    assert "--local-only" in calls[backup]  # A B2 outage cannot block bringing API/web back online.
     migrate=next(i for i,c in enumerate(calls) if c[-1]=="migrate")
     assert backup<migrate
     assert tool.read_config(path)["AI_ENABLED"]=="false"

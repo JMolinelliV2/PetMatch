@@ -13,7 +13,8 @@ from app.ops.backup import create_backup, restore_backup, connection_url
 
 
 @pytest.mark.skipif(os.getenv("RUN_PRODUCTION_INTEGRATION")!="1",reason="Requires the disposable production preview and its operator credentials")
-def test_encrypted_database_and_photo_recovery():
+@pytest.mark.parametrize("offsite_copy",[False,True],ids=["local","simulated-offsite"])
+def test_encrypted_database_and_photo_recovery(offsite_copy,tmp_path):
     assert os.getenv("DISPOSABLE_STACK") == "mascomatch-prod-smoke"
     original_bucket=settings.s3_bucket
     name="mascomatch_restore_check_"+uuid4().hex
@@ -32,6 +33,17 @@ def test_encrypted_database_and_photo_recovery():
             assert source.execute("SELECT count(*) FROM recovery_outcomes WHERE reason='OTHER'").fetchone()[0]>=1
             assert source.execute("SELECT count(*) FROM product_events WHERE NOT aggregated").fetchone()[0]==0
         backup=create_backup("/backups")
+        if offsite_copy:
+            # Real PostgreSQL/SeaweedFS recovery through a simulated B2 copy; no network/cloud credentials.
+            from app.ops.offsite import Offsite,OffsiteConfig
+            from test_offsite_backup import S3
+            identity=tmp_path/"b2-id";identity.write_text("synthetic-key-id")
+            secret=tmp_path/"b2-key";secret.write_text("synthetic-application-key")
+            config=OffsiteConfig(_env_file=None,offsite_backup_enabled=True,
+                b2_endpoint="https://s3.us-west-004.backblazeb2.com",b2_region="us-west-004",b2_bucket="mascomatch-drill-simulated",
+                b2_key_id_file=str(identity),b2_application_key_file=str(secret))
+            remote=Offsite(config,S3());remote.check();info=remote.upload(backup)
+            backup,_=remote.download(info["key"],tmp_path,info["version_id"])
         settings.s3_bucket=bucket
         restore_backup(backup,target_url)
         with psycopg.connect(connection_url(target_url)) as restored:
@@ -49,7 +61,8 @@ def test_encrypted_database_and_photo_recovery():
                     source.close();recovery.close()
         with pytest.raises(ValueError,match="no application tables"):
             restore_backup(backup,target_url)
-        print("Encrypted backup restored: PostgreSQL records and photo hashes verified; populated target rejected")
+        print("Simulated off-site copy" if offsite_copy else "Local copy",
+              "restored: PostgreSQL records and photo hashes verified; populated target rejected")
     finally:
         settings.s3_bucket=original_bucket
         for item in client.list_objects_v2(Bucket=bucket).get("Contents",[]):

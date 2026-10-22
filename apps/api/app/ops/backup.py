@@ -186,8 +186,17 @@ def create_backup(directory):
                 stream.flush()
                 os.fsync(stream.fileno())
             temporary.replace(target)
-        with Redis.from_url(settings.redis_url, socket_connect_timeout=2, socket_timeout=2) as redis:
-            redis.set("mascomatch:backup:last_success", str(time.time()))
+        # A completed file is only a successful backup after authentication and hashes.
+        try:
+            with tempfile.TemporaryDirectory(prefix="mascomatch-verify-") as workspace:
+                verified_archive(target,workspace)
+        except Exception:
+            from app.ops.offsite import OffsiteError
+            raise OffsiteError("LOCAL_VERIFY_FAILED") from None
+        try:
+            with Redis.from_url(settings.redis_url,socket_connect_timeout=2,socket_timeout=2) as redis:
+                redis.set("mascomatch:backup:last_success",time.time())
+        except Exception:pass
         return target
     finally:
         temporary.unlink(missing_ok=True)
@@ -251,37 +260,118 @@ def restore_backup(source, target_database_url):
     print("Backup restored to empty recovery destinations")
 
 
-def serve(directory):
-    interval = max(3600, int(os.getenv("BACKUP_INTERVAL_SECONDS", "86400")))
+def cycle(state,config,*,create=True,local_only=False):
+    from app.ops.offsite import Offsite,OffsiteError,classify,deep_verify,exclusive,prune_local,reconcile
+    import shutil
+    remote=Offsite(config) if config.offsite_backup_enabled and not local_only else None
+    with exclusive(state.directory):
+        state.value.update(enabled=config.offsite_backup_enabled,local_interval=max(3600,int(os.getenv("BACKUP_INTERVAL_SECONDS","21600"))))
+        if create:
+            try:
+                result=create_backup(state.directory)
+                state.value.update(local_last_success=time.time(),local_error_code=None)
+                print("backup_completed",result.name,flush=True)
+            except Exception as exc:
+                code=exc.code if isinstance(exc,OffsiteError) else "LOCAL_BACKUP_FAILED"
+                state.value["local_error_code"]=code;print(code,flush=True)
+        state.save()
+        if remote:
+            try:
+                reconcile(state,remote)
+                if (not state.value.get("error_code") and
+                    time.time()-state.value.get("last_deep_verify",0)>=config.offsite_deep_verify_interval_seconds):
+                    deep_verify(state,remote)
+            except Exception as exc:state.failed(classify(exc,"OFFSITE_VERIFY_FAILED"))
+        elif not local_only:state.value.update(pending_count=0,error_code=None,consecutive_failures=0)
+        if not local_only and not state.value.get("local_error_code") and (not remote or not state.value.get("error_code")):
+            prune_local(state,max(1,int(os.getenv("BACKUP_LOCAL_KEEP","14"))),remote)
+        state.value["local_free_bytes"]=shutil.disk_usage(state.directory).free;state.save()
+
+
+def serve(directory,config):
+    from app.ops.offsite import BackupBusy,State
+    state=State(directory)
+    interval=max(3600,int(os.getenv("BACKUP_INTERVAL_SECONDS","21600")))
+    retry=max(60,min(3600,int(os.getenv("OFFSITE_RETRY_INTERVAL_SECONDS","900"))))
+    due=0
     while True:
-        try:
-            result = create_backup(directory)
-            # Keep fourteen completed, owned archives. No recursive directory deletion.
-            completed = sorted(Path(directory).glob("????????T??????Z-"+"?"*32+".mbak"))
-            for old in completed[:-14]:
-                if old.is_file() and not old.is_symlink():
-                    old.unlink()
-            print("backup_completed", result.name, flush=True)
-        except Exception as exc:
-            print("backup_failed", type(exc).__name__, flush=True)
-        time.sleep(interval)
+        started=time.monotonic();create=started>=due;busy=False
+        try:cycle(state,config,create=create)
+        except BackupBusy:busy=True;print("Backup writer already running; retry later",flush=True)
+        except Exception:print("LOCAL_BACKUP_FAILED",flush=True)
+        if create:due=started+(retry if busy or state.value.get("local_error_code") else interval)
+        time.sleep(min(retry,max(1,due-time.monotonic())))
 
 
-if __name__ == "__main__":
+def main():
+    from app.ops.offsite import BackupBusy,Offsite,OffsiteError,State,deep_verify,exclusive,load_config,validate_key
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["create","verify","restore","serve"])
-    parser.add_argument("path", type=Path)
+    parser.add_argument("action", choices=["create","verify","restore","serve","sync-offsite","check-offsite","verify-offsite","list-offsite","restore-offsite"])
+    parser.add_argument("path", nargs="?")
+    parser.add_argument("--directory",type=Path,default=Path("/backups"))
     parser.add_argument("--target-database-file", type=Path)
+    parser.add_argument("--deep",action="store_true")
+    parser.add_argument("--local-only",action="store_true",help="Create/verify a deployment safety copy without waiting for B2; no pruning")
+    parser.add_argument("--version-id")
+    parser.add_argument("--limit",type=int,default=100,choices=range(1,1001),metavar="1..1000")
+    parser.add_argument("--retention",action="store_true",help="Read retention for each listed version (additional API calls)")
     args = parser.parse_args()
-    if args.action == "create":
-        print("Encrypted backup created:", create_backup(args.path).name)
-    elif args.action == "verify":
-        with tempfile.TemporaryDirectory() as directory:
-            _, manifest = verified_archive(args.path, directory)
-            print("Backup authenticated; photo count:", len(manifest["photos"]))
-    elif args.action == "restore":
-        if not args.target_database_file:
-            parser.error("An explicit empty recovery database file is required")
-        restore_backup(args.path, args.target_database_file.read_text().strip())
-    else:
-        serve(args.path)
+    if args.local_only and args.action!="create":parser.error("--local-only is restricted to create")
+    state=None if args.action in {"verify","restore"} else State(Path(args.path) if args.action in {"create","serve"} and args.path else args.directory)
+    try:
+        if args.local_only:
+            from types import SimpleNamespace
+            config=SimpleNamespace(offsite_backup_enabled=os.getenv("OFFSITE_BACKUP_ENABLED","false").lower() in {"true","1"})
+        else:config=load_config() if args.action not in {"verify","restore"} else None
+        if args.action=="serve":serve(state.directory,config)
+        elif args.action=="create":
+            cycle(state,config,local_only=args.local_only)
+            if state.value.get("local_error_code") or (not args.local_only and state.value.get("error_code")):raise SystemExit(1)
+        elif args.action=="sync-offsite":
+            if not config.offsite_backup_enabled:raise OffsiteError("OFFSITE_CONFIGURATION_ERROR")
+            cycle(state,config,create=False)
+            if state.value.get("error_code"):raise SystemExit(1)
+        elif args.action=="verify":
+            if not args.path:parser.error("Provide a local encrypted archive")
+            with tempfile.TemporaryDirectory() as directory:
+                _,manifest=verified_archive(Path(args.path),directory)
+                print("Backup authenticated; photo count:",len(manifest["photos"]))
+        elif args.action=="restore":
+            if not args.path or not args.target_database_file:parser.error("Provide an archive and explicit empty recovery database file")
+            restore_backup(Path(args.path),args.target_database_file.read_text().strip())
+        else:
+            remote=Offsite(config);remote.check()
+            if args.action=="check-offsite":print("B2 private bucket and retention configuration verified")
+            elif args.action=="list-offsite":
+                rows,truncated=remote.objects()
+                for item in sorted(rows,key=lambda row:row["Key"],reverse=True)[:args.limit]:
+                    info=remote.verify(item["Key"],version=item["VersionId"]) if args.retention else {}
+                    print(json.dumps({"key":item["Key"],"version_id":item["VersionId"],"created_at":item["LastModified"].isoformat(),
+                        "size":item["Size"],"retained_until":info.get("retained_until"),"latest":item.get("IsLatest")},sort_keys=True))
+                print(json.dumps({"listed_objects":len(rows),"inventory_truncated":truncated}))
+            elif args.action=="verify-offsite":
+                with exclusive(state.directory):
+                    item=None if args.path else remote.latest()
+                    key=validate_key(args.path or item["Key"]);version=args.version_id or (item["VersionId"] if item else None)
+                    info=deep_verify(state,remote,key,version) if args.deep else remote.verify(key,version=version)
+                    print(json.dumps({"verified":True,"deep":args.deep,**info},sort_keys=True))
+            elif args.action=="restore-offsite":
+                if not args.path or not args.target_database_file:parser.error("Provide an object key and explicit empty recovery database file")
+                with exclusive(state.directory),tempfile.TemporaryDirectory(prefix=".b2-restore-",dir=state.directory) as directory:
+                    archive,_=remote.download(validate_key(args.path),directory,args.version_id)
+                    restore_backup(archive,args.target_database_file.read_text().strip())
+    except BackupBusy:
+        print("Backup writer already running; retry later",flush=True)
+        raise SystemExit(2) from None
+    except OffsiteError as exc:
+        if state:
+            state.value["enabled"]=os.getenv("OFFSITE_BACKUP_ENABLED","false").lower() in {"true","1"}
+            state.failed(exc)
+        else:print(exc.code,flush=True)
+        raise SystemExit(1) from None
+    except Exception:
+        print("LOCAL_VERIFY_FAILED" if args.action in {"verify","restore"} else "OFFSITE_VERIFY_FAILED",flush=True)
+        raise SystemExit(1) from None
+
+
+if __name__=="__main__":main()

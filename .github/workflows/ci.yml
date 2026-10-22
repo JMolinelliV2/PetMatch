@@ -21,6 +21,10 @@ jobs:
         run: |
           python tools/production_init.py
           docker compose --env-file .env.production -f compose.production.yml --profile ai-local --profile setup --profile smoke --profile monitoring config --quiet
+      - name: Validate monitoring alert rules without B2
+        run: |
+          docker run --rm --entrypoint promtool -v "$PWD/infrastructure/production:/rules:ro" prom/prometheus:v3.15.0 check rules /rules/alerts.yml
+          docker run --rm --entrypoint promtool -v "$PWD/infrastructure/production:/rules:ro" prom/prometheus:v3.15.0 test rules /rules/backup-alerts.test.yml
       - name: Test real PostgreSQL migrations without model downloads
         run: |
           docker build -t mascomatch-migration-check infrastructure/docker/postgres

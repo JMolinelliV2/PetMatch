@@ -7,6 +7,7 @@ from sqlalchemy import and_, func, literal, or_, select, union_all
 from app.admin_access import administrator
 from app.admin_period import period_filters
 from app.admin_charts import chart_data
+from app.ops.backup_status import read_status
 from app.analysis.service import utcnow
 from app.db.session import get_db
 from app.models import (AccountToken, AdminAudit, AnalysisJob, ContactMessage, EmailDeliveryLog,
@@ -91,6 +92,7 @@ def overview(response: Response, from_at: AwareDatetime | None = None, to_at: Aw
         {"label": "Intentos de correo fallidos", "value": mail_states.get("FAILED", 0), "help": "Incluye intentos que luego pudieron enviarse."},
         {"label": "Contactos recibidos", "value": count(db, ContactMessage, contact_scope), "help": "Mensajes conservados, recibidos en el período."}],
         "mail_queue": {"pending": queued, "failed": failed},
+        "backups": read_status(),
         "charts": chart_data(db, from_at, to_at, job_states, mail_states, user_scope),
         "tracking_started_at": tracking.started_at if tracking else None, "generated_at": utcnow()}
 

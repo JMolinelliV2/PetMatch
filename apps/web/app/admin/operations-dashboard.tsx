@@ -11,6 +11,8 @@ import type { OverviewCharts } from "./overview-widgets";
 import { AdminFieldLabel, AdminHeading, AdminLabel } from "./admin-info";
 import { operationStateHelp } from "./admin-help";
 import {useAdminReload} from "./admin-reload";
+import { BackupStatusWidget } from "./backup-status";
+import type { BackupStatus } from "./backup-status";
 
 export type OperationSection = "overview" | "users" | "jobs" | "mail" | "contacts" | "publications" | "audit";
 type Section = OperationSection;
@@ -27,7 +29,7 @@ type Entry = {
 };
 type Data = { items?: Entry[]; total?: number; limit?: number; summary?: Record<string, number>;
   metrics?: { label: string; value: number; help: string }[]; mail_queue?: { pending: number; failed: number };
-  charts?: OverviewCharts;
+  charts?: OverviewCharts; backups?: BackupStatus;
   tracking_started_at?: string; generated_at: string };
 const sections: [Section, string][] = [["overview", "Resumen"], ["users", "Usuarios"], ["jobs", "Trabajos"], ["mail", "Correos"], ["contacts", "Contactos"], ["publications", "Publicaciones"], ["audit", "Auditoría"]];
 const labels: Record<string, string> = {
@@ -118,7 +120,7 @@ export function OperationsDashboard({section,onNavigate,period,onPeriodChange}:{
     {saved && <p role="status" className="notice">{saved}</p>}{error && <p role="alert" className="notice notice-warning">{error}</p>}
     {!data && !error && <p role="status" className="admin-matching-loading">Cargando {title?.toLowerCase()}…</p>}
     {data && <>
-      {section === "overview" ? <OverviewWidgets metrics={data.metrics||[]} charts={data.charts} queue={data.mail_queue} onQueue={()=>{navigate("mail");setMailView("mail_queue");}}/>
+      {section === "overview" ? <><OverviewWidgets metrics={data.metrics||[]} charts={data.charts} queue={data.mail_queue} onQueue={()=>{navigate("mail");setMailView("mail_queue");}}/><BackupStatusWidget status={data.backups}/></>
         : <>
           {data.summary && Object.keys(data.summary).length > 0 && <div className="admin-state-totals" aria-label="Totales antes del filtro de estado">{Object.entries(data.summary).filter(([key]) => key !== "DISPATCHING" && key !== "QUEUED" && !(section === "jobs" && key === "PENDING")).map(([key, value]) => <span key={key}><AdminLabel label={labels[key] || key} help={operationStateHelp(key, section)} />: <strong>{number(value)}</strong></span>)}</div>}
           <p className="field-help" role="status">{number(data.total || 0)} {data.total === 1 ? "registro" : "registros"} con estos filtros. Los totales por estado respetan el período y la búsqueda, antes del filtro de estado.</p>

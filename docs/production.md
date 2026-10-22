@@ -1,6 +1,6 @@
 # Preparación para producción
 
-Actualizado el 21 de octubre de 2026. Este archivo describe un despliegue Docker en un servidor Linux. No publica automáticamente el dominio ni contrata servicios.
+Actualizado el 22 de octubre de 2026. Este archivo describe un despliegue Docker en un servidor Linux. No publica automáticamente el dominio ni contrata servicios.
 
 ## Lanzamiento del producto y medición propia — 21 de octubre
 
@@ -31,7 +31,7 @@ La actualización a Pillow 13.0.0 corrige los avisos detectados en la auditoría
 - Límites compartidos en Redis por cuenta o dirección verificada del cliente. Un proxy ajeno no puede suplantar esa dirección. Si Redis falla, el acceso y las escrituras se suspenden temporalmente; las lecturas conservan límites locales.
 - Las cargas de fotos tienen un máximo de tres solicitudes simultáneas en la web, con permisos temporales que vencen. Caddy limita el tamaño del cuerpo y su tiempo de lectura. Las escrituras de la API pasan por los proxies de la web.
 - Registros de solicitudes con identificador, ruta general, duración y estado; se omiten cuerpos, consultas, direcciones y contactos. Los errores SQL no imprimen parámetros.
-- Respaldos cifrados diarios, conservación de catorce copias y verificación de integridad antes de restaurar. Recuperar exige destinos vacíos.
+- Respaldos cifrados cada seis horas por defecto, conservación local de catorce copias y verificación antes de registrar éxito. Copia off-site opcional en B2, con reintentos, Object Lock y recuperación en destinos vacíos. Ver [configuración B2](backblaze-backup.md).
 - Métricas privadas y reglas de Prometheus para disponibilidad, demora de análisis, fallos de correo y respaldos atrasados. Integración continua para pruebas, compilación y auditoría de dependencias de Python y web.
 
 Los controles siguen las referencias de [sesiones de OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html), [contraseñas de OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html), [secretos de Compose](https://docs.docker.com/compose/how-tos/use-secrets/) y [contadores atómicos de Redis](https://redis.io/docs/latest/commands/incr/).
@@ -153,14 +153,18 @@ En la instalación local, aplicar cambios de `.env` con `docker compose --profil
 
 ## Respaldos y recuperación
 
-El servicio `backup` arranca con una copia y repite cada 86.400 segundos. Captura una instantánea PostgreSQL con `pg_dump`, guarda las fotos referidas por esa misma instantánea y un manifiesto con hashes. El archivo final usa AES-256-GCM y una clave distinta de las credenciales de la aplicación. Si falta una foto o falla una comprobación, no se publica una copia incompleta. Las versiones retenidas permiten leer una foto eliminada durante la captura.
+El servicio `backup` arranca con una copia y repite cada 21.600 segundos (seis horas), configurable con `BACKUP_INTERVAL_SECONDS`. Captura una instantánea PostgreSQL con `pg_dump`, guarda las fotos referidas por esa misma instantánea y un manifiesto con hashes. El archivo final usa AES-256-GCM y una clave distinta de las credenciales de la aplicación. Solo registra éxito después de autenticar y verificar el archivo. Las versiones retenidas permiten leer una foto eliminada durante la captura.
 
 ```sh
 docker compose -p mascomatch --env-file .env.production -f compose.production.yml exec backup python -m app.ops.backup create /backups
 docker compose -p mascomatch --env-file .env.production -f compose.production.yml exec backup python -m app.ops.backup verify /backups/ARCHIVO.mbak
 ```
 
-Esta primera configuración limita el archivo descifrado a 1 GB, hasta 20.000 fotos y usa almacenamiento temporal de 2 GB para recuperar. Antes de superar esa capacidad hay que ampliar y probar el almacenamiento temporal y el presupuesto de respaldo. La retención conserva las últimas catorce copias; comprobar espacio disponible y exportar copias cifradas a otra ubicación. Un respaldo en el mismo servidor no cubre la pérdida de ese servidor.
+Esta configuración limita el archivo descifrado a 1 GiB, hasta 20.000 fotos y usa almacenamiento temporal de 2 GiB para recuperar. Antes de superar esa capacidad hay que ampliar y probar el almacenamiento temporal y el presupuesto de respaldo. `BACKUP_LOCAL_KEEP=14` conserva las últimas catorce copias (aproximadamente 3,5 días al intervalo predeterminado). Con B2 activo, conserva además todos los pendientes o no verificables remotamente; vigilar espacio. Un respaldo solo en el mismo servidor no cubre su pérdida.
+
+La [guía B2](backblaze-backup.md) explica el alta manual del bucket privado, retención COMPLIANCE de 30 días, lifecycle posterior, claves exclusivas del servicio `backup`, reintentos y simulacro de restauración. `OFFSITE_BACKUP_ENABLED=false` sigue siendo el valor inicial. B2 no se usa para las fotos operativas. El resumen de administración y las métricas privadas muestran por separado el estado local y off-site. Prometheus incluye reglas de alerta; conectar y probar su receptor externo es una tarea del propietario.
+
+RPO objetivo aproximado: ≤6 h; el intervalo no es una garantía ante fallos o subidas demoradas. RTO sin compromiso hasta medir una recuperación real: depende del tamaño, red, provisión de servidor y restauración PostgreSQL/fotos. No se implementa alta disponibilidad. La validación ordinaria agrega recuperación desde una copia remota simulada; `tools/production_validate.py --with-b2 --b2-env-file ...` habilita deliberadamente el simulacro B2 real con bucket de prueba, nunca en CI normal.
 
 Para recuperar, preparar un entorno aislado con una base PostgreSQL sin tablas de aplicación y un bucket vacío, con la aplicación detenida. Entregar la clave original de respaldo al servicio de recuperación y la URL del destino en un archivo privado. Ejecutar:
 

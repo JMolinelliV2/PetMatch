@@ -1,0 +1,50 @@
+rule_files: [alerts.yml]
+evaluation_interval: 1m
+tests:
+  - name: Disabled B2 does not alert
+    interval: 1m
+    input_series:
+      - {series: mascomatch_offsite_backup_enabled, values: '0+0x600'}
+      - {series: mascomatch_offsite_backup_latest_capture_unixtime, values: '0+0x600'}
+      - {series: mascomatch_backup_interval_seconds, values: '21600+0x600'}
+    alert_rule_test:
+      - {eval_time: 9h, alertname: MascoMatchOffsiteBackupStale, exp_alerts: []}
+      - {eval_time: 9h, alertname: MascoMatchOffsiteBackupFailures, exp_alerts: []}
+  - name: Recent upload of old capture still alerts
+    interval: 1m
+    input_series:
+      - {series: mascomatch_offsite_backup_enabled, values: '1+0x600'}
+      - {series: mascomatch_offsite_backup_latest_capture_unixtime, values: '3600+0x600'}
+      - {series: mascomatch_offsite_backup_last_success_unixtime, values: '0+60x600'}
+      - {series: mascomatch_backup_last_success_unixtime, values: '0+60x600'}
+      - {series: mascomatch_backup_interval_seconds, values: '21600+0x600'}
+    alert_rule_test:
+      - eval_time: 9h30m
+        alertname: MascoMatchOffsiteBackupStale
+        exp_alerts:
+          - exp_labels: {severity: critical}
+            exp_annotations: {summary: "B2 no tiene un punto de recuperación reciente; revisar copias pendientes"}
+      - {eval_time: 9h30m, alertname: MascoMatchBackupOverdue, exp_alerts: []}
+  - name: Consecutive failures have an independent warning
+    interval: 1m
+    input_series:
+      - {series: mascomatch_offsite_backup_enabled, values: '1+0x30'}
+      - {series: mascomatch_offsite_backup_consecutive_failures, values: '3+0x30'}
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MascoMatchOffsiteBackupFailures
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations: {summary: "Fallaron varios intentos de respaldo o verificación en B2"}
+  - name: Local backup alarm remains active with B2 disabled
+    interval: 1m
+    input_series:
+      - {series: mascomatch_offsite_backup_enabled, values: '0+0x600'}
+      - {series: mascomatch_backup_last_success_unixtime, values: '0+0x600'}
+      - {series: mascomatch_backup_interval_seconds, values: '21600+0x600'}
+    alert_rule_test:
+      - eval_time: 8h30m
+        alertname: MascoMatchBackupOverdue
+        exp_alerts:
+          - exp_labels: {severity: critical}
+            exp_annotations: {summary: "El respaldo local excede su intervalo más dos horas de margen"}

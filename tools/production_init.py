@@ -9,6 +9,17 @@ import json
 from urllib.parse import quote
 
 
+def prepare_b2_secrets(root: Path, secrets_directory: Path | None = None):
+    """Add empty dedicated placeholders to an existing installation; never replace a key."""
+    directory=secrets_directory if secrets_directory is not None else root.resolve()/".secrets"
+    if not directory.is_dir() or directory.is_symlink():raise ValueError("Initialize the private secrets directory first")
+    for name in ("b2_key_id","b2_application_key"):
+        path=directory/name
+        if path.exists() or path.is_symlink():continue
+        with open(path,"x",encoding="utf-8",opener=lambda name,flags:os.open(name,flags,0o600)) as stream:stream.write("\n")
+        path.chmod(0o444)
+
+
 def initialize(root: Path, domain="mascomatch.com"):
     root = root.resolve()
     if not re.fullmatch(r"[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?", domain) or "." not in domain:
@@ -35,6 +46,8 @@ def initialize(root: Path, domain="mascomatch.com"):
         "smtp_password": "",
         "metrics_token": secrets.token_urlsafe(48),
         "backup_key": base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(),
+        "b2_key_id":"",
+        "b2_application_key":"",
     }
     data["photos_config"] = json.dumps({"identities":[
         {"name":"operator","credentials":[{"accessKey":"mascomatch_admin","secretKey":data["photos_admin_secret"]}],"actions":["Admin","Read","Write","List"]},
@@ -99,7 +112,17 @@ SMTP_USERNAME=
 SMTP_FROM=MascoMatch <info@{domain}>
 SMTP_TLS_MODE=starttls
 NEXT_PUBLIC_SEARCH_COUNTRY=UY
-BACKUP_INTERVAL_SECONDS=86400
+BACKUP_INTERVAL_SECONDS=21600
+BACKUP_LOCAL_KEEP=14
+OFFSITE_BACKUP_ENABLED=false
+OFFSITE_RETRY_INTERVAL_SECONDS=900
+OFFSITE_DEEP_VERIFY_INTERVAL_SECONDS=604800
+B2_ENDPOINT=
+B2_REGION=
+B2_BUCKET=
+B2_OBJECT_LOCK_ENABLED=true
+B2_OBJECT_LOCK_DAYS=30
+B2_OPERATION_TIMEOUT_SECONDS=900
 """
     with open(configuration, "x", encoding="utf-8", newline="\n", opener=lambda path, flags: os.open(path, flags, 0o600)) as stream:
         stream.write(public)
@@ -110,6 +133,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, default=Path.cwd())
     parser.add_argument("--domain", default="mascomatch.com")
+    parser.add_argument("--prepare-b2-secrets",action="store_true",help="Add missing empty B2 secret files to an existing installation")
+    parser.add_argument("--secrets-directory",type=Path,help="Existing private secrets directory, for upgrade preparation only")
     args = parser.parse_args()
-    print("Created private deployment files:", initialize(args.directory, args.domain))
-    print("Store backup_key separately from the server; losing it makes backups unrecoverable.")
+    if args.prepare_b2_secrets:
+        prepare_b2_secrets(args.directory,args.secrets_directory)
+        print("Dedicated B2 secret placeholders ready; existing keys preserved.")
+    else:
+        print("Created private deployment files:", initialize(args.directory, args.domain))
+        print("Store backup_key separately from the server; losing it makes backups unrecoverable.")

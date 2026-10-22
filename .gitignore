@@ -3,6 +3,9 @@
 .secrets/
 backups/
 *.mbak
+*.mbak.offsite.json
+.offsite-state.json
+.offsite.lock
 real-data/
 .venv/
 .pip-cache/

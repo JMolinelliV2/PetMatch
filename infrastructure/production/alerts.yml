@@ -17,10 +17,35 @@ groups:
         labels: {severity: warning}
         annotations: {summary: "Hay correos que agotaron sus reintentos de envío"}
       - alert: MascoMatchBackupOverdue
-        expr: time() - mascomatch_backup_last_success_unixtime > 93600
+        expr: time() - mascomatch_backup_last_success_unixtime > clamp_min(mascomatch_backup_interval_seconds + 7200, 28800)
         for: 15m
         labels: {severity: critical}
-        annotations: {summary: "No se completó una copia de respaldo en 26 horas"}
+        annotations: {summary: "El respaldo local excede su intervalo más dos horas de margen"}
+      - alert: MascoMatchOffsiteBackupStale
+        expr: (mascomatch_offsite_backup_enabled == 1) and (time() - mascomatch_offsite_backup_latest_capture_unixtime > clamp_min(mascomatch_backup_interval_seconds + 7200, 28800))
+        for: 15m
+        labels: {severity: critical}
+        annotations: {summary: "B2 no tiene un punto de recuperación reciente; revisar copias pendientes"}
+      - alert: MascoMatchOffsiteBackupFailures
+        expr: (mascomatch_offsite_backup_enabled == 1) and (mascomatch_offsite_backup_consecutive_failures >= 3)
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: "Fallaron varios intentos de respaldo o verificación en B2"}
+      - alert: MascoMatchBackupHeartbeatMissing
+        expr: (mascomatch_backup_status_known == 0) or (time() - mascomatch_backup_heartbeat_unixtime > 2700)
+        for: 15m
+        labels: {severity: critical}
+        annotations: {summary: "El proceso de respaldo no está publicando su estado"}
+      - alert: MascoMatchBackupDiskLow
+        expr: (mascomatch_backup_status_known == 1) and (mascomatch_backup_free_bytes < 1073741824)
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: "Queda menos de 1 GiB en el volumen de respaldos; se conservan los pendientes de B2"}
+      - alert: MascoMatchOffsiteDeepVerificationOverdue
+        expr: (mascomatch_offsite_backup_enabled == 1) and (time() - mascomatch_offsite_backup_last_deep_verify_unixtime > 691200)
+        for: 15m
+        labels: {severity: warning}
+        annotations: {summary: "Hace más de ocho días que no se autentica una descarga de B2"}
       - alert: MascoMatchServerErrors
         expr: rate(mascomatch_http_requests_total{status_class="5xx"}[5m]) > 0.1
         for: 5m

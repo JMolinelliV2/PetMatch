@@ -333,13 +333,25 @@ services:
     environment:
       <<: *backend
       BACKUP_KEY_FILE: /run/secrets/backup_key
-      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-21600}
+      BACKUP_LOCAL_KEEP: ${BACKUP_LOCAL_KEEP:-14}
+      OFFSITE_BACKUP_ENABLED: ${OFFSITE_BACKUP_ENABLED:-false}
+      OFFSITE_RETRY_INTERVAL_SECONDS: ${OFFSITE_RETRY_INTERVAL_SECONDS:-900}
+      OFFSITE_DEEP_VERIFY_INTERVAL_SECONDS: ${OFFSITE_DEEP_VERIFY_INTERVAL_SECONDS:-604800}
+      B2_ENDPOINT: ${B2_ENDPOINT:-}
+      B2_REGION: ${B2_REGION:-}
+      B2_BUCKET: ${B2_BUCKET:-}
+      B2_KEY_ID_FILE: /run/secrets/b2_key_id
+      B2_APPLICATION_KEY_FILE: /run/secrets/b2_application_key
+      B2_OBJECT_LOCK_ENABLED: ${B2_OBJECT_LOCK_ENABLED:-true}
+      B2_OBJECT_LOCK_DAYS: ${B2_OBJECT_LOCK_DAYS:-30}
+      B2_OPERATION_TIMEOUT_SECONDS: ${B2_OPERATION_TIMEOUT_SECONDS:-900}
       RUNTIME_ROLE: ops
       JWT_SECRET_FILE: ""
       SMTP_PASSWORD_FILE: ""
       METRICS_TOKEN_FILE: ""
       MAIL_DELIVERY_MODE: disabled
-    secrets: [database_url, redis_url, s3_secret_key, backup_key]
+    secrets: [database_url, redis_url, s3_secret_key, backup_key, b2_key_id, b2_application_key]
     volumes: [backups:/backups]
     networks: [backend]
     read_only: true
@@ -390,3 +402,5 @@ secrets:
   smtp_password: {file: "${SECRETS_DIR:-./.secrets}/smtp_password"}
   metrics_token: {file: "${SECRETS_DIR:-./.secrets}/metrics_token"}
   backup_key: {file: "${SECRETS_DIR:-./.secrets}/backup_key"}
+  b2_key_id: {file: "${SECRETS_DIR:-./.secrets}/b2_key_id"}
+  b2_application_key: {file: "${SECRETS_DIR:-./.secrets}/b2_application_key"}

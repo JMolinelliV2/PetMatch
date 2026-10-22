@@ -1,0 +1,13 @@
+# Explicit opt-in overlay for tools/production_validate.py --with-b2 only.
+# The remote test archive remains protected; lifecycle removes it after expiry.
+services:
+  backup:
+    environment:
+      DATABASE_URL_FILE: /run/secrets/migrator_database_url
+      S3_ACCESS_KEY: mascomatch_admin
+      S3_SECRET_KEY_FILE: /run/secrets/photos_admin_secret
+      MAIL_DELIVERY_MODE: disabled
+      RUN_B2_INTEGRATION: "1"
+      DISPOSABLE_STACK: mascomatch-prod-smoke
+    secrets: [migrator_database_url, photos_admin_secret]
+    command: python -m pytest tests/test_b2_integration.py -q -s -p no:cacheprovider

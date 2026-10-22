@@ -125,5 +125,7 @@ def metrics(authorization: str | None = Header(default=None)):
                             values[f'mascomatch_container_{name}{{service="worker-{kind}"}}']=float(value)
     except Exception:
         values["mascomatch_ready"] = 0
+    from app.ops.backup_status import metric_values,read_status
+    values.update(metric_values(read_status()))
     return Response("\n".join(f"{name} {value}" for name,value in sorted(values.items()))+"\n",
                     media_type="text/plain; version=0.0.4", headers={"Cache-Control":"no-store"})

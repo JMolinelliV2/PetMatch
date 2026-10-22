@@ -48,6 +48,10 @@ def main():
     path=args.env_file.resolve()
     if not path.is_file():
         parser.error("Initialize private configuration with tools/production_init.py first")
+    if args.action=="deploy":
+        subprocess.run([sys.executable,str(ROOT/"tools/production_init.py"),"--directory",str(path.parent),
+                        "--prepare-b2-secrets","--secrets-directory",
+                        os.environ.get("SECRETS_DIR",str(path.parent/".secrets"))],check=True)
     if args.action=="fallback" and read_config(path).get("OPENCLIP_ENABLED","true")!="true":
         parser.error("OpenCLIP must be enabled before selecting its fallback; no service was stopped")
     base=["docker","compose","-p",args.project,"--env-file",str(path),"-f",str(ROOT/"compose.production.yml"),
@@ -74,10 +78,10 @@ def main():
         has_schema=compose("exec","-T","db","psql","-U","mascomatch_owner","-d","mascomatch","-Atc",
                            "SELECT to_regclass('public.users') IS NOT NULL",capture=True)=="t"
         if has_schema:
-            compose("run","--rm","--no-deps","backup","python","-m","app.ops.backup","create","/backups")
+            compose("run","--rm","--no-deps","backup","python","-m","app.ops.backup","create","/backups","--local-only")
         compose("run","--rm","--no-deps","migrate")
         if not has_schema:
-            compose("run","--rm","--no-deps","backup","python","-m","app.ops.backup","create","/backups")
+            compose("run","--rm","--no-deps","backup","python","-m","app.ops.backup","create","/backups","--local-only")
         if semantic or visual:
             compose("build","model-setup","ai-smoke")
             compose("run","--rm","--no-deps","model-setup")
