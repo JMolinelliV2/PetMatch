@@ -16,6 +16,7 @@ const paths = {
   expand: <path d="M9 3H3v6M15 3h6v6M21 15v6h-6M9 21H3v-6" />,
   search: <><circle cx="10.5" cy="10.5" r="7.5" /><path d="m16 16 6 6" /></>,
   clock: <><circle cx="12" cy="12" r="9" /><path d="M12 6v6l4 2" /></>,
+  refresh: <><path d="M20 7a9 9 0 0 0-15-2L2 8m0-5v5h5M4 17a9 9 0 0 0 15 2l3-3m0 5v-5h-5" /></>,
   calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 2v6M17 2v6M3 11h18" /></>,
   edit: <><path d="m15 4 5 5M4 20l4-1 12-12a3.5 3.5 0 0 0-5-5L3 14l-1 6Z" /></>,
   spark: <path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" />,

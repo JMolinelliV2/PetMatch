@@ -36,6 +36,8 @@ docker compose up --build
 
 Para crear cuentas, configurá SMTP en `.env` para enviar el correo de confirmación. Para usar un buzón local en desarrollo, elegí `MAIL_DELIVERY_MODE=preview`, `SMTP_HOST=mailpit`, `SMTP_PORT=1025` y credenciales SMTP vacías; levantá el proyecto con `docker compose --profile mail-local up --build`. Abrí el enlace de confirmación desde `http://localhost:8025` antes de publicar desde la cuenta. [Configuración del correo](docs/production.md).
 
+El frontend de desarrollo en Docker comprueba cambios de archivos cada segundo para actualizar la vista también en Windows/OneDrive, donde las notificaciones del sistema de archivos pueden no llegar al contenedor. Esta configuración no afecta el servidor de producción.
+
 La primera construcción instala PostGIS y pgvector sobre la imagen oficial `postgres:17-bookworm`, compila MinIO desde su código fuente e instala las dependencias de la aplicación. Puede tardar unos minutos. MinIO usa la versión fija `RELEASE.2025-10-15T17-29-55Z`, sin depender de la imagen retirada de Docker Hub. La API aplica la migración inicial antes de arrancar.
 
 - Web: http://localhost:3000

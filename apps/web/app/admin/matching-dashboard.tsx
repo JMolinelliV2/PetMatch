@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
-import { Icon } from "../ui/pictogram";
+import { useEffect, useId, useRef, useState } from "react";
 import { ReportId } from "../ui/report-id";
 import { AdminDateRange, periodQuery } from "./date-range";
 import type { AdminPeriod } from "./date-range";
 import { AdminFieldLabel, AdminHeading, AdminLabel } from "./admin-info";
+import {useAdminReload} from "./admin-reload";
 
 type Outcome = "positive" | "false" | "uncertain" | "pending";
 type Counts = Record<Outcome, number> & { total: number; decided: number; reviewed: number; positive_rate: number | null; review_rate: number | null };
@@ -29,19 +29,20 @@ const date = (value: string) => new Intl.DateTimeFormat("es-UY", { dateStyle: "m
 const score = (value: number | null) => value === null ? "Sin puntaje" : `${new Intl.NumberFormat("es-UY", { maximumFractionDigits: 2 }).format(value)} / 1`;
 
 function ResponseHistory({ id }: { id: string }) {
+  const {version,beginRequest}=useAdminReload();
   const [events, setEvents] = useState<FeedbackEvent[] | null>(null);
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
   useEffect(() => {
-    const controller = new AbortController();
-    setEvents(null); setError("");
-    void fetch(`/api/admin/matching/${id}/history`, { cache: "no-store", signal: controller.signal }).then(async response => {
+    const controller = new AbortController(); const finish=beginRequest();
+    setError("");
+    void fetch(`/api/admin/matching/${id}/history`, { cache: "no-store", signal: AbortSignal.any([controller.signal,AbortSignal.timeout(20000)]) }).then(async response => {
       if (!response.ok) throw new Error("No pudimos consultar el historial.");
       const data: { items: FeedbackEvent[] } = await response.json();
       if (!controller.signal.aborted) setEvents(data.items);
-    }).catch(cause => { if (!controller.signal.aborted) setError(cause.message); });
-    return () => controller.abort();
-  }, [id, refresh]);
+    }).catch(cause => { if (!controller.signal.aborted) setError(cause.message); }).finally(finish);
+    return () => {controller.abort();finish();};
+  }, [id, refresh, version, beginRequest]);
   return <div className="admin-response-history">
     <AdminHeading level={4} label="Historial de respuestas" />
     {error ? <p role="alert">{error} <button type="button" className="text-button" onClick={() => setRefresh(value => value + 1)}>Reintentar</button></p>
@@ -53,6 +54,8 @@ function ResponseHistory({ id }: { id: string }) {
 }
 
 export function MatchingDashboard({period,onPeriodChange,fixedFilters}:{period:AdminPeriod;onPeriodChange:(value:AdminPeriod)=>void;fixedFilters?:Record<string,string>}) {
+  const {version,beginRequest}=useAdminReload();
+  const appliedReload=useRef(version);
   const fieldId = useId();
   const [source, setSource] = useState("all");
   const [dataset, setDataset] = useState("all");
@@ -60,23 +63,23 @@ export function MatchingDashboard({period,onPeriodChange,fixedFilters}:{period:A
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState("");
-  const [refresh, setRefresh] = useState(0);
   const [history, setHistory] = useState<string | null>(null);
   useEffect(() => {
-    const controller = new AbortController();
-    setData(null); setError(""); setHistory(null);
+    const controller = new AbortController(); const finish=beginRequest();
+    if(appliedReload.current===version){setData(null);setHistory(null);}
+    appliedReload.current=version;setError("");
     const query = new URLSearchParams({ days: "0", ...periodQuery(period), source, dataset, result, offset: String(offset),...fixedFilters });
     void fetch(`/api/admin/matching?${query}`, { cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]) }).then(async response => {
       if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? "Tu sesión no tiene acceso al panel. Ingresá con la cuenta administradora y su correo confirmado." : "No pudimos cargar las recomendaciones.");
       const next: Dashboard = await response.json();
       if (!controller.signal.aborted) setData(next);
-    }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error && cause.name !== "TimeoutError" ? cause.message : "No pudimos cargar el seguimiento. Revisá tu sesión e intentá nuevamente."); });
-    return () => controller.abort();
-  }, [period, source, dataset, result, offset, refresh,JSON.stringify(fixedFilters)]);
+    }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error && cause.name !== "TimeoutError" ? cause.message : "No pudimos cargar el seguimiento. Revisá tu sesión e intentá nuevamente."); }).finally(finish);
+    return () => {controller.abort();finish();};
+  }, [period, source, dataset, result, offset, version, beginRequest,JSON.stringify(fixedFilters)]);
   function filter(setter: (value: string) => void, value: string) { setter(value); setOffset(0); }
   const counts = data?.summary;
   return <section className="admin-matching" aria-labelledby="admin-matching-title">
-    <div className="admin-section-heading"><div><AdminHeading level={2} id="admin-matching-title" label="Resultados de las coincidencias" /><p>Seguimiento de las recomendaciones del sistema y las respuestas de los dueños.</p></div><button type="button" className="button button-secondary" onClick={() => setRefresh(value => value + 1)}><Icon name="clock" />Actualizar</button></div>
+    <div className="admin-section-heading"><div><AdminHeading level={2} id="admin-matching-title" label="Resultados de las coincidencias" /><p>Seguimiento de las recomendaciones del sistema y las respuestas de los dueños.</p></div></div>
     <AdminDateRange value={period} onApply={next => { onPeriodChange(next); setOffset(0); }} />
     <p className="field-help">El período se aplica a la fecha en que se generó la recomendación.</p>
     <div className="admin-matching-filters">

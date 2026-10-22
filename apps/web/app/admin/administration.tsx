@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { AccountSession } from "../account-session";
 import { ReportId } from "../ui/report-id";
@@ -12,6 +12,7 @@ import { AdminWorkspace } from "./admin-workspace";
 import {AnalyticsDashboard} from "./analytics-dashboard";
 import type { SessionUser } from "../account-session";
 import { AdminFieldLabel, AdminHeading } from "./admin-info";
+import {AdminReloadProvider,useAdminReload} from "./admin-reload";
 type Report = { id: string; target_type: string; target_id: string; public_id: string | null; title: string;
   reason: string; detail: string; status: string; created_at: string; visibility: string | null;
   publication?: { description: string; photo_ids: string[] } };
@@ -19,6 +20,8 @@ type ReportData = { items: Report[]; total: number; limit: number };
 const reasons: Record<string, string> = { SPAM: "Spam", FALSE_INFORMATION: "Información falsa", INAPPROPRIATE_PHOTO: "Foto inapropiada", OTHER: "Otro motivo" };
 
 function PlatformManagement({period,onPeriodChange}:{period:AdminPeriod;onPeriodChange:(value:AdminPeriod)=>void}) {
+  const {version,beginRequest}=useAdminReload();
+  const appliedReload=useRef(version);
   const fieldId = useId();
   const [data, setData] = useState<ReportData | null>(null);
   const [status, setStatus] = useState("OPEN");
@@ -28,14 +31,16 @@ function PlatformManagement({period,onPeriodChange}:{period:AdminPeriod;onPeriod
   const [refresh, setRefresh] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   useEffect(() => {
-    const controller = new AbortController(); setData(null); setError("");
+    const controller = new AbortController(); const finish=beginRequest(); setError("");
+    if(appliedReload.current===version)setData(null);
+    appliedReload.current=version;
     const params = new URLSearchParams({ status, offset: String(offset), ...periodQuery(period) });
     void fetch(`/api/admin/reports?${params}`, { cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]) }).then(async response => {
       if (!response.ok) throw new Error("No pudimos consultar las denuncias. Revisá tu sesión y permisos.");
       const next: ReportData = await response.json(); if (!controller.signal.aborted) setData(next);
-    }).catch(cause => { if (!controller.signal.aborted) setError(cause.message); });
-    return () => controller.abort();
-  }, [status, period, offset, refresh]);
+    }).catch(cause => { if (!controller.signal.aborted) setError(cause.message); }).finally(finish);
+    return () => {controller.abort();finish();};
+  }, [status, period, offset, refresh, version, beginRequest]);
   async function action(id: string, value: string) {
     setBusy(id); setError(""); setSaved("");
     try {
@@ -47,7 +52,7 @@ function PlatformManagement({period,onPeriodChange}:{period:AdminPeriod;onPeriod
     finally { setBusy(null); }
   }
   return <section aria-labelledby="admin-reports-title">
-    <div className="admin-section-heading"><div><AdminHeading level={2} id="admin-reports-title" label="Denuncias" /><p>Revisá las publicaciones denunciadas y registrá la acción correspondiente.</p></div><button type="button" className="button button-secondary" onClick={() => setRefresh(value => value + 1)}>Actualizar</button></div>
+    <div className="admin-section-heading"><div><AdminHeading level={2} id="admin-reports-title" label="Denuncias" /><p>Revisá las publicaciones denunciadas y registrá la acción correspondiente.</p></div></div>
     <AdminDateRange value={period} onApply={next => { onPeriodChange(next); setOffset(0); }} />
     <p className="field-help">El período se aplica a la recepción de la denuncia. Las correcciones del final conservan su listado de registros recientes.</p>
     <div className="field-label"><AdminFieldLabel htmlFor={`${fieldId}-status`} label="Estado de la denuncia" help="Pendiente significa que falta revisión; con acción aplicada indica que administración intervino; descartada indica que se revisó sin mantener una acción sobre la publicación." /><select id={`${fieldId}-status`} className="form-input" value={status} onChange={event => { setStatus(event.target.value); setOffset(0); }}><option value="OPEN">Pendientes</option><option value="ACTION_TAKEN">Con acción aplicada</option><option value="DISMISSED">Descartadas</option><option value="">Todas</option></select></div>
@@ -67,6 +72,6 @@ function PlatformManagement({period,onPeriodChange}:{period:AdminPeriod;onPeriod
 
 function AdminPanel({user,logout}:{user:SessionUser;logout:()=>Promise<void>}) {
   const [period,setPeriod]=useState<AdminPeriod>(emptyPeriod);
-  return <AdminWorkspace user={user} logout={logout}>{(view,navigate)=>view==="growth"||view==="usage"||view==="analytics-matching"||view==="impact"||view==="inventory"?<AnalyticsDashboard section={view} period={period} onPeriodChange={setPeriod}/>:view==="matching"?<MatchingDashboard period={period} onPeriodChange={setPeriod}/>:view==="management"?<PlatformManagement period={period} onPeriodChange={setPeriod}/>:<OperationsDashboard section={view} onNavigate={navigate} period={period} onPeriodChange={setPeriod}/>}</AdminWorkspace>;
+  return <AdminReloadProvider><AdminWorkspace user={user} logout={logout}>{(view,navigate)=>view==="growth"||view==="usage"||view==="analytics-matching"||view==="impact"||view==="inventory"?<AnalyticsDashboard section={view} period={period} onPeriodChange={setPeriod}/>:view==="matching"?<MatchingDashboard period={period} onPeriodChange={setPeriod}/>:view==="management"?<PlatformManagement period={period} onPeriodChange={setPeriod}/>:<OperationsDashboard section={view} onNavigate={navigate} period={period} onPeriodChange={setPeriod}/>}</AdminWorkspace></AdminReloadProvider>;
 }
 export function Administration() { return <AccountSession showAccountHeader={false}>{(user,actions) => user.admin_access ? <AdminPanel user={user} logout={actions.logout}/> : <div className="notice notice-warning"><h2>Acceso restringido</h2><p>Este panel está reservado a la cuenta administradora con su correo confirmado. Tu sesión actual no tiene acceso.</p><div className="location-actions"><Link className="text-button" href="/mi-cuenta">Ir a mi cuenta</Link><button className="text-button" type="button" onClick={()=>void actions.logout()}>Cerrar sesión</button></div></div>}</AccountSession>; }

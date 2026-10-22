@@ -258,14 +258,14 @@ def dashboard(section:Literal["growth","usage","matching","impact","inventory"],
     provider:Literal["all","pet_reid","open_clip","NONE"]="all",model:str | None=Query(default=None,max_length=120),
     revision:str | None=Query(default=None,max_length=80),job_source:Literal["all","text","image","embedding"]="all",
     job_provider:Literal["all","ollama","pet_reid","open_clip"]="all",job_model:str | None=Query(default=None,max_length=120),
-    job_revision:str | None=Query(default=None,max_length=80),export_csv:bool=False,
+    job_revision:str | None=Query(default=None,max_length=80),export_csv:bool=False,force_refresh:bool=False,
     country:str | None=Query(default=None,pattern="^[A-Z]{2}$"),department:str | None=Query(default=None,max_length=80),
     locality:str | None=Query(default=None,max_length=80),db=Depends(get_db),user=Depends(administrator)):
     response.headers["Cache-Control"]="no-store"
     fingerprint=hashlib.sha256(json.dumps([days,str(from_at),str(to_at),group,source,provider,model,revision,
         job_source,job_provider,job_model,job_revision,country,department,locality,settings.analytics_enabled,
         settings.analytics_raw_days,settings.analytics_daily_days],separators=(",",":")).encode()).hexdigest()
-    cached=cached_dashboard(section,fingerprint)
+    cached=None if force_refresh else cached_dashboard(section,fingerprint)
     if cached is not None:
         if export_csv:return Response(aggregate_csv(cached),media_type="text/csv; charset=utf-8",headers={"Cache-Control":"no-store",
             "Content-Disposition":f'attachment; filename="mascomatch-{section}-aggregate.csv"',"X-Content-Type-Options":"nosniff"})

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { AdminDateRange, adminDate, periodQuery } from "./date-range";
 import type { AdminPeriod } from "./date-range";
@@ -8,9 +8,9 @@ import type { ModerationAction } from "./moderation-dialog";
 import { ReportId } from "../ui/report-id";
 import { OverviewWidgets } from "./overview-widgets";
 import type { OverviewCharts } from "./overview-widgets";
-import { Icon } from "../ui/pictogram";
 import { AdminFieldLabel, AdminHeading, AdminLabel } from "./admin-info";
 import { operationStateHelp } from "./admin-help";
+import {useAdminReload} from "./admin-reload";
 
 export type OperationSection = "overview" | "users" | "jobs" | "mail" | "contacts" | "publications" | "audit";
 type Section = OperationSection;
@@ -61,6 +61,8 @@ function Badge({ value, section }: { value?: string; section: Section }) { retur
 function Detail({ label, value }: { label: string; value?: string | number | null }) { return <div><dt aria-label={label}><AdminLabel label={label} /></dt><dd>{value ?? "Sin registro"}</dd></div>; }
 
 export function OperationsDashboard({section,onNavigate,period,onPeriodChange}:{section:Section;onNavigate:(value:Section)=>void;period:AdminPeriod;onPeriodChange:(value:AdminPeriod)=>void}) {
+  const {version,beginRequest}=useAdminReload();
+  const appliedReload=useRef(version);
   const fieldId = useId();
   const [state, setState] = useState("all");
   const [dateField, setDateField] = useState("created");
@@ -78,15 +80,17 @@ export function OperationsDashboard({section,onNavigate,period,onPeriodChange}:{
   useEffect(()=>{setOffset(0);setState("all");setDateField("created");setKind("all");setSearch("");setQ("");setSaved("");if(section!=="mail")setMailView("mail");setAction(null);},[section]);
   function filter(setter: (value: string) => void, value: string) { setter(value); setOffset(0); }
   useEffect(() => {
-    const controller = new AbortController(); setData(null); setError("");
+    const controller = new AbortController(); const finish=beginRequest();
+    if(appliedReload.current===version)setData(null);
+    appliedReload.current=version; setError("");
     const params = new URLSearchParams({ ...periodQuery(period), state, date_field: dateField, kind, q, offset: String(offset) });
     const path = section === "overview" ? "" : `/${section === "mail" ? mailView : section}`;
     void fetch(`/api/admin/operations${path}?${params}`, { cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]) }).then(async response => {
       if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? "Tu sesión no tiene acceso. Ingresá con la cuenta administradora." : "No pudimos consultar esta sección.");
       const next: Data = await response.json(); if (!controller.signal.aborted) setData(next);
-    }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error && cause.name !== "TimeoutError" ? cause.message : "La consulta demoró demasiado. Intentá nuevamente."); });
-    return () => controller.abort();
-  }, [section, period, state, dateField, kind, q, offset, mailView, refresh]);
+    }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error && cause.name !== "TimeoutError" ? cause.message : "La consulta demoró demasiado. Intentá nuevamente."); }).finally(finish);
+    return () => {controller.abort();finish();};
+  }, [section, period, state, dateField, kind, q, offset, mailView, refresh, version, beginRequest]);
   function userAction(item: Entry) {
     const blocked = item.status === "BLOCKED";
     setAction({ url: `/api/admin/users/${item.id}/status`, status: blocked ? "ACTIVE" : "BLOCKED",
@@ -102,7 +106,7 @@ export function OperationsDashboard({section,onNavigate,period,onPeriodChange}:{
   const title = sections.find(([value]) => value === section)?.[1];
   const options = section === "mail" && mailView === "mail_queue" ? ["PENDING", "FAILED"] : stateOptions[section];
   return <section className="admin-operations" aria-labelledby="admin-operations-title">
-    <div className="admin-section-heading"><div><span className="admin-section-eyebrow">{section==="overview"?"Vista general":"Gestión de la plataforma"}</span><AdminHeading level={2} id="admin-operations-title" label={section==="overview"?"Resumen de la plataforma":title || "Gestión"} help={sectionDescription[section]} /><p>{sectionDescription[section]}</p></div><button type="button" className="button button-secondary" onClick={() => setRefresh(value => value + 1)}><Icon name="clock"/>Actualizar</button></div>
+    <div className="admin-section-heading"><div><span className="admin-section-eyebrow">{section==="overview"?"Vista general":"Gestión de la plataforma"}</span><AdminHeading level={2} id="admin-operations-title" label={section==="overview"?"Resumen de la plataforma":title || "Gestión"} help={sectionDescription[section]} /><p>{sectionDescription[section]}</p></div></div>
     <AdminDateRange value={period} onApply={next => { onPeriodChange(next); setOffset(0); }} />
     {section !== "overview" && <div className="admin-matching-filters admin-operations-filters">
       {section === "mail" && <div className="field-label"><AdminFieldLabel htmlFor={`${fieldId}-mail`} label="Consultar" help="El historial muestra intentos de correo realizados; las solicitudes pendientes y fallidas muestran mensajes que todavía esperan su envío o necesitan revisión." /><select id={`${fieldId}-mail`} className="form-input" value={mailView} onChange={event => { setMailView(event.target.value); setState("all"); setOffset(0); }}><option value="mail">Historial de envíos</option><option value="mail_queue">Solicitudes pendientes y fallidas</option></select></div>}

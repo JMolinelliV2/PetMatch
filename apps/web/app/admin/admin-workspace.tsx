@@ -7,6 +7,7 @@ import type { IconName } from "../ui/pictogram";
 import type { SessionUser } from "../account-session";
 import type { OperationSection } from "./operations-dashboard";
 import type {AnalyticsSection} from "./analytics-dashboard";
+import {AdminReloadButton} from "./admin-reload";
 
 export type AdminView = OperationSection | "matching" | "management" | AnalyticsSection;
 const groups: { label: string; items: { view: AdminView; label: string; icon: IconName }[] }[] = [
@@ -40,5 +41,6 @@ export function AdminWorkspace({ user, logout, children }: { user: SessionUser; 
       <header className="admin-topbar"><div className="admin-breadcrumb"><button type="button" className="admin-mobile-menu" aria-label={menuOpen ? "Cerrar menú del panel" : "Abrir menú del panel"} aria-expanded={menuOpen} aria-controls="admin-sidebar" onClick={() => setMenuOpen(value => !value)}><Icon name={menuOpen ? "close" : "menu"} /></button><span>Administración</span><Icon name="chevron" /><strong>{label}</strong></div><div className="admin-topbar-actions"><span className="admin-private-label"><Icon name="shield" />Acceso privado</span><button type="button" className="admin-theme-button" onClick={toggleTheme} aria-label={`Cambiar a modo ${theme === "dark" ? "claro" : "oscuro"}`}><Icon name={theme === "dark" ? "sun" : "moon"} /></button><Link className="admin-site-link" href="/">Ver sitio <Icon name="arrow" /></Link></div></header>
       <div id="admin-workspace-content" className="admin-workspace-content" tabIndex={-1}>{children(view, navigate)}</div>
     </div>
+    <AdminReloadButton/>
   </div>;
 }

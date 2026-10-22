@@ -1,9 +1,10 @@
 "use client";
-import {useEffect,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import {AdminDateRange,adminDate,periodQuery} from "./date-range";
 import type {AdminPeriod} from "./date-range";
 import {AdminHeading,AdminLabel} from "./admin-info";
 import {MatchingDashboard} from "./matching-dashboard";
+import {useAdminReload} from "./admin-reload";
 import "./analytics.css";
 
 export type AnalyticsSection="growth"|"usage"|"analytics-matching"|"impact"|"inventory";
@@ -25,19 +26,22 @@ function Timings({items}:{items:Record<string,Timing>}){return <div className="a
 function Table({rows}:{rows:Record<string,string|number|null>[]}){const keys=Object.keys(rows[0]||{});return !rows.length?<p className="field-help">Todavía no hay registros para estos filtros.</p>:<div className="admin-table-scroll"><table className="admin-results-table"><thead><tr>{keys.map(k=><th key={k}>{k}</th>)}</tr></thead><tbody>{rows.map((row,i)=><tr key={i}>{keys.map(k=><td key={k}>{typeof row[k]==="number"?n(row[k] as number):row[k]??"—"}</td>)}</tr>)}</tbody></table></div>;}
 
 export function AnalyticsDashboard({section,period,onPeriodChange}:{section:AnalyticsSection;period:AdminPeriod;onPeriodChange:(v:AdminPeriod)=>void}){
- const [data,setData]=useState<Data|null>(null);const [error,setError]=useState("");const [refresh,setRefresh]=useState(0);
+ const {version,beginRequest}=useAdminReload();const appliedReload=useRef(version);
+ const [data,setData]=useState<Data|null>(null);const [error,setError]=useState("");
  const [matchingTab,setMatchingTab]=useState("quality");const [geoFilter,setGeoFilter]=useState({country:"",department:"",locality:""});
  const [group,setGroup]=useState("day");const [provider,setProvider]=useState("all");const [source,setSource]=useState("all");
  const [model,setModel]=useState("");const [revision,setRevision]=useState("");const [jobSource,setJobSource]=useState("all");
  const [jobProvider,setJobProvider]=useState("all");const [jobModel,setJobModel]=useState("");const [jobRevision,setJobRevision]=useState("");
- useEffect(()=>{const controller=new AbortController();setData(null);setError("");const query=new URLSearchParams({days:"0",...periodQuery(period),group,
+ useEffect(()=>{const controller=new AbortController();const finish=beginRequest();const manualReload=appliedReload.current!==version;
+   appliedReload.current=version;if(!manualReload)setData(null);setError("");const query=new URLSearchParams({days:"0",...periodQuery(period),group,
    provider,source,...Object.fromEntries(Object.entries(geoFilter).filter(([,v])=>v)),...(model?{model}:{}),...(revision?{revision}:{}),job_source:jobSource,job_provider:jobProvider,...(jobModel?{job_model:jobModel}:{}),...(jobRevision?{job_revision:jobRevision}:{})});
-   void fetch(`/api/admin/analytics/${section==="analytics-matching"?"matching":section}?${query}`,{cache:"no-store",signal:AbortSignal.any([controller.signal,AbortSignal.timeout(20000)])}).then(async r=>{if(!r.ok)throw new Error(r.status===403||r.status===401?"Tu sesión no tiene acceso al panel.":"No pudimos consultar las métricas.");const result:Data=await r.json();if(!controller.signal.aborted)setData(result);}).catch(e=>{if(!controller.signal.aborted)setError(e.message);});return()=>controller.abort();
- },[section,period,group,provider,source,model,revision,jobSource,jobProvider,jobModel,jobRevision,refresh,geoFilter]);
+   if(manualReload)query.set("force_refresh","true");
+   void fetch(`/api/admin/analytics/${section==="analytics-matching"?"matching":section}?${query}`,{cache:"no-store",signal:AbortSignal.any([controller.signal,AbortSignal.timeout(20000)])}).then(async r=>{if(!r.ok)throw new Error(r.status===403||r.status===401?"Tu sesión no tiene acceso al panel.":"No pudimos consultar las métricas.");const result:Data=await r.json();if(!controller.signal.aborted)setData(result);}).catch(e=>{if(!controller.signal.aborted)setError(e.message);}).finally(finish);return()=>{controller.abort();finish();};
+ },[section,period,group,provider,source,model,revision,jobSource,jobProvider,jobModel,jobRevision,version,beginRequest,geoFilter]);
  const chartNames=section==="growth"?["page_view","account_created"]:section==="impact"?["recovery"]:section==="analytics-matching"?["recommendation_generated","match_viewed"]:section==="inventory"?["page_view","match_viewed"]:["lost_case_created","sighting_created"];
  const points:Record<string,number>={};data?.series.filter(p=>chartNames.includes(p.name)).forEach(p=>{points[p.date]=(points[p.date]||0)+p.value;});
  const max=Math.max(1,...Object.values(points));
- return <section className="admin-analytics" aria-labelledby="analytics-title"><div className="admin-section-heading"><div><AdminHeading level={2} id="analytics-title" label={titles[section]} help="Datos propios de MascoMatch. Los contadores de producto, actividad, recomendaciones e impacto conservan definiciones separadas."/><p>Datos para entender el uso y mejorar el servicio.</p></div><button type="button" className="button button-secondary" onClick={()=>setRefresh(v=>v+1)}>Actualizar</button></div>
+ return <section className="admin-analytics" aria-labelledby="analytics-title"><div className="admin-section-heading"><div><AdminHeading level={2} id="analytics-title" label={titles[section]} help="Datos propios de MascoMatch. Los contadores de producto, actividad, recomendaciones e impacto conservan definiciones separadas."/><p>Datos para entender el uso y mejorar el servicio.</p></div></div>
  <a className="button button-secondary" download href={`/api/admin/analytics/${section==="analytics-matching"?"matching":section}?${new URLSearchParams({days:"0",...periodQuery(period),group,provider,source,model,revision,job_source:jobSource,job_provider:jobProvider,job_model:jobModel,job_revision:jobRevision,...Object.fromEntries(Object.entries(geoFilter).filter(([,v])=>v)),export_csv:"true"})}`}>Exportar CSV agregado</a>
  <AdminDateRange value={period} onApply={onPeriodChange}/><div className="analytics-controls"><label> <AdminLabel label="Agrupación" help="Agrupa las series por día, semana desde el lunes o mes, en hora de Uruguay."/><select className="form-input" value={group} onChange={e=>setGroup(e.target.value)}><option value="day">Día</option><option value="week">Semana</option><option value="month">Mes</option></select></label></div>
  {section==="analytics-matching"&&matchingTab!=="performance"&&<div className="admin-matching-filters"><label><AdminLabel label="Proveedor visual" help="Proveedor realmente utilizado al recomendar, conservado en el snapshot. Los registros anteriores sin evidencia permanecen como desconocidos."/><select className="form-input" value={provider} onChange={e=>{setProvider(e.target.value);setModel("");setRevision("");}}><option value="all">Todos</option><option value="pet_reid">PET_REID</option><option value="open_clip">OPENCLIP</option><option value="NONE">Sin evidencia visual</option></select></label><label><AdminLabel label="Origen" help="Recomendaciones generales o desde un aviso."/><select className="form-input" value={source} onChange={e=>setSource(e.target.value)}><option value="all">Todos</option><option value="GENERAL">General</option><option value="LINKED">Desde un aviso</option></select></label><label><AdminLabel label="Modelo visual" help="Nombre exacto conservado en la recomendación. Se puede elegir desde la tabla de versiones."/><input className="form-input" maxLength={120} value={model} onChange={e=>setModel(e.target.value)} placeholder="Todos los modelos"/></label><label><AdminLabel label="Revisión visual" help="Revisión exacta de los pesos; permite comparar versiones sin mezclarlas."/><input className="form-input" maxLength={80} value={revision} onChange={e=>setRevision(e.target.value)} placeholder="Todas las revisiones"/></label></div>}
