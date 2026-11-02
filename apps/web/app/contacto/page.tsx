@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ContactForm } from "./contact-form";
 
 export const metadata: Metadata = {
@@ -9,7 +8,6 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return <main id="main-content" className="page account-page">
-    <Link href="/" className="back-link"><span aria-hidden="true">←</span> Volver al inicio</Link>
     <h1>Ayudanos a mejorar</h1>
     <p className="page-intro">¿Tenés una idea o encontraste algo que no funciona? Contanos. Podés escribirnos sin crear una cuenta.</p>
     <ContactForm />

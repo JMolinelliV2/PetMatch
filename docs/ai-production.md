@@ -13,7 +13,7 @@ flowchart TD
   V --> P{Especie vigente}
   P -->|Perro / gato| D[RF-DETR Nano + crop con margen]
   D --> RE[Pet-ReID 512D]
-  P -->|Otra / desconocida| CL[OpenCLIP 512D]
+  P -->|Perro / gato con Pet-ReID deshabilitado| CL[OpenCLIP 512D]
   S --> G[Gemma 3 4B: atributos JSON]
   G --> F[(FeatureSet)]
   RE --> E[(Embeddings individuales + espacio + calidad)]
@@ -32,7 +32,7 @@ La API no importa Torch, OpenCLIP ni ONNX Runtime. Solo guarda y despacha trabaj
 
 La selección de especie se centraliza en `embeddings/specs.py`: mascota, mascota del aviso, o especie de la observación. Al cambiarla se invalida la evidencia anterior y se agenda la nueva. La clave de deduplicación incluye foto, snapshot de entrada, especie relevante, proveedor, modelo, revisión y preprocessing. Cambiar crop, modelo o foto produce otro trabajo; repetir el mismo backfill no lo duplica.
 
-Perros/gatos usan detección local, confianza mínima 0,75 y margen 18%. Ausencia de animal, detecciones ambiguas, timeout o error producen fallback a foto completa. Se registran área del animal, resolución, blur aproximado, confianza y motivo. La calidad reduce el peso de la señal visual; no rechaza una foto técnicamente válida. El VLM reutiliza la caja vigente de esa misma foto o calcula una; conserva aspect ratio, elimina EXIF, resuelve transparencia sobre blanco y limita a 1024 px/JPEG 88 sin ampliar imágenes pequeñas.
+Perros/gatos usan detección local, confianza mínima 0,75 y margen 18%. Ausencia de animal, detecciones ambiguas, timeout o error producen fallback a foto completa. Se registran área de la mascota, resolución, blur aproximado, confianza y motivo. La calidad reduce el peso de la señal visual; no rechaza una foto técnicamente válida. El VLM reutiliza la caja vigente de esa misma foto o calcula una; conserva aspect ratio, elimina EXIF, resuelve transparencia sobre blanco y limita a 1024 px/JPEG 88 sin ampliar imágenes pequeñas.
 
 ## Reglas de matching y notificación
 
@@ -80,7 +80,7 @@ dc exec -T api python -m app.ops.release_check
 python3 tools/production_apply.py smoke
 ```
 
-El smoke crea y elimina una base y objetos temporales; requiere el rol operador solo dentro de su contenedor, sin claves SMTP ni de sesión. Verifica dog/cat/rabbit/unknown, vectores reales, Gemma texto/imagen, matching, outbox sin envío, Redis, PostGIS/pgvector y backfill. Son fixtures técnicas, no un dataset de eficacia. Las pruebas de fallos controlados y de espacios incompatibles están en la suite sin modelos.
+El smoke crea y elimina una base y objetos temporales; requiere el rol operador solo dentro de su contenedor, sin claves SMTP ni de sesión. Verifica dog/cat, vectores reales, Gemma texto/imagen, matching, outbox sin envío, Redis, PostGIS/pgvector y backfill. Son fixtures técnicas, no un dataset de eficacia. Las pruebas de fallos controlados y de espacios incompatibles están en la suite sin modelos.
 
 Para comparar configuraciones Gemma, montar fotos públicas/propias en `/evaluation` y una carpeta de salida privada y escribible en `/results`. No ejecutar el benchmark de cold-start mientras se atienden usuarios: descarga el modelo de RAM deliberadamente.
 

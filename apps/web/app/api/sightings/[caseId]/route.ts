@@ -11,11 +11,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   let lease:string|null=null;
   try {
     lease=await admitUpload(request,true);
-    const body = await boundedBody(request, 42 * 1024 * 1024);
+    const body = await boundedBody(request, 52 * 1024 * 1024);
     const auth = authorization(request);
     const send = (headers: Record<string, string>) => fetch(`${serverApi}/public/lost-animals/${caseId}/sightings`, {
       method: "POST", headers: { ...headers, "Content-Type": request.headers.get("content-type") || "multipart/form-data" },
-      body: Buffer.from(body), cache: "no-store", signal: AbortSignal.timeout(60000),
+      body: Buffer.from(body), cache: "no-store", signal: AbortSignal.timeout(90000),
     });
     let upstream = await send(auth);
     const expired = upstream.status === 401 && Boolean(auth.Authorization);

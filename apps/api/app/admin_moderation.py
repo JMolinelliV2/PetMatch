@@ -4,6 +4,7 @@ from sqlalchemy import select, update
 from app.analysis.service import utcnow
 from app.matching.linked import mark_related_pending
 from app.models import AuthSession, LostCase, Observation, Pet, User
+from app.species import require_supported_owner
 
 
 def publication_author(db, target):
@@ -19,6 +20,8 @@ def set_visibility(db, kind, identity, visibility):
     author = db.scalar(select(User).where(User.id == author_id).with_for_update(key_share=True).execution_options(populate_existing=True)) if author_id else None
     if visibility == "VISIBLE" and author is not None and author.status != "ACTIVE":
         raise HTTPException(status_code=409, detail="Primero reactivá la cuenta del autor para restaurar esta publicación.")
+    if visibility == "VISIBLE":
+        require_supported_owner(db, kind, identity)
     target = db.scalar(select(model).where(model.id == identity).with_for_update(key_share=True).execution_options(populate_existing=True))
     if target is None:
         raise HTTPException(status_code=404, detail="Publicación no encontrada.")

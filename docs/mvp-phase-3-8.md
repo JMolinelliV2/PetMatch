@@ -6,13 +6,13 @@ Entrega del 8 de octubre de 2026. El dominio `mascomatch.com` fue adquirido por 
 
 ## Funciones
 
-- Los avistamientos generales y animales encontrados buscan automáticamente avisos activos compatibles, aunque no tengan foto. También se reconsideran al publicar o editar un aviso y al completar el procesamiento de evidencia.
+- Los avistamientos generales y mascotas encontradas buscan automáticamente avisos activos compatibles, aunque no tengan foto. También se reconsideran al publicar o editar un aviso y al completar el procesamiento de evidencia.
 - Las características declaradas de especie, sexo, color y tamaño se conservan. El texto original no se sustituye por la salida de IA.
 - Las fotos generan vectores visuales locales; se combinan con características, ubicación y fecha. Los resultados tienen motivos legibles y una puntuación de compatibilidad que **no es una probabilidad de identidad**.
 - La pantalla de confirmación de un avistamiento muestra candidatos ordenados. Los avistamientos enviados desde un aviso siguen utilizando su formulario breve.
 - El dueño recibe alertas privadas y puede responder «podría ser», «no es» o «confirmado». El feedback se conserva al recalcular y evita nuevas alertas para coincidencias descartadas. Confirmar una coincidencia no cierra automáticamente el aviso.
 - La revisión distingue **Es mi mascota, sigo buscándola** de **Ya la recuperé**. La primera confirma el avistamiento y conserva la búsqueda activa. La segunda guarda la coincidencia y cambia el aviso a `FOUND` en una transacción, desactiva sus coincidencias y notificaciones y cancela los correos pendientes. Está disponible en Notificaciones y Mis avisos; el estado se actualiza al guardar. Confirmaciones anteriores conservan su significado de identidad, sin marcar recuperaciones que el dueño no indicó.
-- **Mis avisos** permite consultar publicaciones, editar datos del animal, descripción, fecha y ubicación, agregar fotos, ver coincidencias, cerrar/reabrir una búsqueda y marcar al animal como encontrado.
+- **Mis avisos** permite consultar publicaciones, editar datos de la mascota, descripción, fecha y ubicación, agregar fotos, ver coincidencias, cerrar/reabrir una búsqueda y marcar a la mascota como encontrada.
 - **Mapa** separa perdidos, avistamientos y encontrados. Filtra especie, fecha, distancia a una referencia del dispositivo y reportes con coincidencias. Las coordenadas públicas se redondean; hay alternativa en una lista.
 - **Denunciar publicación** registra motivos y detalles. Administradores pueden revisar la evidencia, ocultar/restaurar publicaciones, descartar denuncias, bloquear/reactivar cuentas, consultar registros y fallos de IA y corregir descripciones. Las correcciones conservan la descripción anterior en auditoría privada.
 - El correo agrupa los reportes pendientes de un mismo dueño y aviso. La espera inicial predeterminada es 15 segundos, más el intervalo de despacho, para agrupar avisos próximos en el tiempo. Las alertas internas se crean inmediatamente al completar la comparación.
@@ -20,7 +20,7 @@ Entrega del 8 de octubre de 2026. El dominio `mascomatch.com` fue adquirido por 
 
 ## Modelo visual local
 
-La versión actual usa Pet-ReID 512D para perros/gatos y OpenCLIP `ViT-B-32/openai` 512D para otras especies/desconocido. Vectores normalizados, CPU y dos hilos por defecto. No utiliza claves, API pagas ni inferencia remota. El worker visual tiene una imagen separada para que la API no cargue PyTorch.
+La versión actual usa Pet-ReID 512D para perros/gatos y OpenCLIP `ViT-B-32/openai` 512D como alternativa explícita para perros/gatos si se deshabilita Pet-ReID. No admite otras especies. Vectores normalizados, CPU y dos hilos por defecto. No utiliza claves, API pagas ni inferencia remota. El worker visual tiene una imagen separada para que la API no cargue PyTorch.
 
 Los pesos se descargan explícitamente desde revisiones fijadas y se verifican por SHA-256. OpenCLIP se instala directamente en Safetensors y Pet-ReID/detector en ONNX, sin pickle ni conversión de código remoto. El volumen `vision_models` conserva aproximadamente 1 GB de pesos visuales. Ver [modelos y licencias](third-party-models.md).
 
@@ -56,12 +56,12 @@ La similitud coseno se transforma con límites configurables, y solo se comparan
 
 | Ruta | Acceso / función |
 | --- | --- |
-| GET `/matches/observations/{id}` | Autor del reporte; candidatos con información pública del animal |
+| GET `/matches/observations/{id}` | Autor del reporte; candidatos con información pública de la mascota |
 | GET `/matches/lost-cases/{id}` | Dueño del aviso; evidencia y feedback |
 | PATCH `/matches/{id}/feedback` | Dueño del aviso; confirmar, descartar o resolver |
 | GET / POST `/embeddings/{owner_type}/{id}` | Dueño del reporte; estado / procesamiento |
 | GET `/me/dashboard` | Cuenta propia; mascotas, casos y reportes |
-| PATCH `/me/cases/{id}` | Cuenta propia; actualización atómica de animal y aviso |
+| PATCH `/me/cases/{id}` | Cuenta propia; actualización atómica de mascota y aviso |
 | GET `/public/map` | Público; coordenadas aproximadas y campos limitados |
 | POST `/reports` | Visitante o cuenta; denuncia |
 | GET / PATCH `/admin/reports` | Administrador; revisión y acciones |

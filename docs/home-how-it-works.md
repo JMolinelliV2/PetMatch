@@ -8,7 +8,7 @@ A 1000 px o menos, el centro baja a 112 px, el espacio entre columnas a 12 px y 
 
 ## Section Order
 
-La sección sigue después de la portada y antes de los animales perdidos. Presenta título e introducción, seguidos de cuatro pasos con número, ilustración, título y dos párrafos visibles. Los pasos son: publicar el aviso, sumar un avistamiento, revisar pistas y cerrar la búsqueda tras el reencuentro. Las ilustraciones son conceptuales y no muestran reportes reales.
+La sección sigue después de la portada y antes de las mascotas perdidas. Presenta título e introducción, seguidos de cuatro pasos con número, ilustración, título y dos párrafos visibles. Los pasos son: publicar el aviso, sumar un avistamiento, revisar pistas y cerrar la búsqueda tras el reencuentro. Las ilustraciones son conceptuales y no muestran reportes reales.
 
 ## Navigation
 
@@ -56,7 +56,7 @@ El camino se colorea con el avance por la página. IntersectionObserver activa u
 
 ## Implementación y alcance
 
-`HomeHowItWorks` y su CSS conservan su ubicación independiente de la página principal. El recorrido usa APIs nativas, sin nuevas dependencias. Su estado controla únicamente la decoración del camino. El texto mantiene la publicación con correo confirmado, el avistamiento breve sin cuenta, la recepción de pistas vinculadas, la revisión humana de coincidencias y el cierre del aviso tras recuperar al animal.
+`HomeHowItWorks` y su CSS conservan su ubicación independiente de la página principal. El recorrido usa APIs nativas, sin nuevas dependencias. Su estado controla únicamente la decoración del camino. El texto mantiene la publicación con correo confirmado, el avistamiento breve sin cuenta, la recepción de pistas vinculadas, la revisión humana de coincidencias y el cierre del aviso tras recuperar a la mascota.
 
 El primer paso aclara que publicar un aviso es gratis y que MascoMatch se financia con donaciones, integrado en la explicación existente.
 

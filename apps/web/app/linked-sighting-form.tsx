@@ -1,4 +1,5 @@
 "use client";
+import { ObservationEditLink } from "./ui/observation-edit-link";
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -12,6 +13,8 @@ import type { SightingResult } from "@/lib/linked-sightings";
 import { LocationPicker } from "./location-picker";
 import { DogPhoto } from "./perdidos/dog-photo";
 import { PhotoUploader } from "./ui/photo-uploader";
+import {usePhotoSelection} from "./use-photo-selection";
+import {MAX_REPORT_PHOTOS,photoSelectionError} from "@/lib/report-photos";
 import { ReportId } from "./ui/report-id";
 import { ReportPurpose } from "./ui/report-purpose";
 
@@ -22,7 +25,7 @@ export function LinkedSightingForm({ caseId }: { caseId: string }) {
   const [error, setError] = useState("");
   const [locationError, setLocationError] = useState("");
   const [location, setLocation] = useState<Place | null>(null);
-  const [photos, setPhotos] = useState<File[]>([]);
+  const {photos,primaryIndex,changePhotos,setPrimaryIndex} = usePhotoSelection();
   const [recent, setRecent] = useState(true);
   const [when, setWhen] = useState(() => localDateTime());
   const [busy, setBusy] = useState(false);
@@ -76,9 +79,8 @@ export function LinkedSightingForm({ caseId }: { caseId: string }) {
     if (busy || !target) return;
     setError(""); setLocationError("");
     if (!location) { setLocationError("Elegí un lugar de la lista o usá tu ubicación actual."); return; }
-    if (photos.length > 4 || photos.some(photo => photo.size > 10 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(photo.type))) {
-      setError("Adjuntá hasta 4 fotos JPEG, PNG o WebP, de hasta 10 MB cada una."); return;
-    }
+    const photoError = photoSelectionError(photos);
+    if (photoError) { setError(photoError); return; }
     const date = recent ? new Date() : new Date(when);
     if (!Number.isFinite(date.getTime()) || date.getTime() > Date.now() + 60000) { setError("Indicá una fecha y hora válidas, que no estén en el futuro."); return; }
     if (!submission.current) submission.current = { id: crypto.randomUUID(), date: date.toISOString() };
@@ -89,6 +91,7 @@ export function LinkedSightingForm({ caseId }: { caseId: string }) {
     if (location.locality) form.set("public_location", location.locality);
     form.set("analytics_geo",JSON.stringify(analyticsGeo(location)));
     for (const photo of photos) form.append("photos", photo);
+    if (photos.length) form.set("primary_index",String(primaryIndex ?? 0));
     setBusy(true);
     try {
       const response = await fetch(`/api/sightings/${caseId}`, { method: "POST", body: form });
@@ -102,7 +105,6 @@ export function LinkedSightingForm({ caseId }: { caseId: string }) {
   }
 
   return <main id="main-content" className="page linked-sighting-page">
-    <Link href={`/perdidos/${encodeURIComponent(caseId)}`} className="back-link"><span aria-hidden="true">←</span> Volver al aviso</Link>
     {loading ? <p role="status" className="page-intro">Cargando aviso…</p>
       : missing ? <><h1>Este aviso ya no está disponible</h1><p className="page-intro">Podés publicar un avistamiento general.</p><Link href="/avistamiento" className="button button-secondary">Publicar un avistamiento</Link></>
       : !target ? <><h1>No pudimos abrir el aviso</h1><p role="alert" className="notice notice-warning">{error}</p></>
@@ -113,23 +115,24 @@ export function LinkedSightingForm({ caseId }: { caseId: string }) {
         <p role="status" className="notice notice-success sighting-result">{sightingMessage(result, photos.length > 0)}</p>
         {statusError && <p className="notice notice-warning" role="alert">{statusError}</p>}
         {(paused || statusError) && <button type="button" className="text-button" onClick={() => setRefresh(value => value + 1)}>Actualizar revisión</button>}
-        <div className="success-actions"><Link href={`/perdidos/${caseId}`} className="button button-primary">Volver al aviso</Link><Link href="/perdidos" className="button button-secondary">Ver animales perdidos</Link></div>
+        <ObservationEditLink id={result.id} />
+        <div className="success-actions"><Link href="/perdidos" className="button button-secondary">Ver mascotas reportadas</Link></div>
       </> : <>
         <h1>¿Viste a {target.name}?</h1>
         <p className="page-intro">Indicá el lugar y adjuntá fotos si tenés. Tu avistamiento quedará vinculado a este aviso.</p>
         <ReportPurpose kind="sighting" />
-        <div className="sighting-target"><DogPhoto dog={target} /><div><strong>{target.name}</strong><ReportId id={target.id} publicId={target.public_id} /><p>{speciesLabel(target.species)} · Aviso de animal perdido</p></div></div>
+        <div className="sighting-target"><DogPhoto dog={target} /><div><strong>{target.name}</strong><ReportId id={target.id} publicId={target.public_id} /><p>{speciesLabel(target.species)} · Aviso de mascota perdida</p></div></div>
         <form onSubmit={submit} className="linked-sighting-form" aria-busy={busy}>
           <fieldset disabled={busy} className="form-controls section-fields">
             <div><h2>¿Dónde lo viste?</h2><LocationPicker value={location} required onChange={place => { changed(); setLocation(place); setLocationError(""); }} />{locationError && <p role="alert" className="notice notice-error">{locationError}</p>}</div>
             <div>
-              <PhotoUploader name="photos" label="Fotos" maxFiles={4} inputRef={fileInput} files={photos} onFilesChange={next => { changed(); setPhotos(next); }} />
-              <p className="field-help">Las fotos del animal pueden verse en el mapa público, junto a una zona aproximada.</p>
+              <PhotoUploader name="photos" label="Fotos" maxFiles={MAX_REPORT_PHOTOS} inputRef={fileInput} files={photos} primaryIndex={primaryIndex} onPrimaryChange={index=>{changed();setPrimaryIndex(index);}} onFilesChange={next => { changed(); changePhotos(next); }} />
+              <p className="field-help">Las fotos de la mascota pueden verse en el mapa público, junto a una zona aproximada.</p>
             </div>
             <label className="sighting-recent"><input type="checkbox" checked={recent} onChange={event => { changed(); setRecent(event.target.checked); }} />Lo vi recién</label>
             {!recent && <label className="field-label">¿Cuándo lo viste?<input type="datetime-local" value={when} required className="form-input" onChange={event => { changed(); setWhen(event.target.value); }} /><span className="field-help">La fecha y la hora pueden ser aproximadas.</span></label>}
             {error && <p role="alert" className="notice notice-error">{error}</p>}
-            <div className="form-footer"><button type="submit" className="button button-primary">{busy ? "Enviando…" : "Enviar avistamiento"}</button><p className="form-privacy">Podés enviarlo sin crear una cuenta. La ubicación exacta se compartirá de forma privada con el dueño si el avistamiento resulta relevante. La identidad del animal siempre está por confirmar.</p></div>
+            <div className="form-footer"><button type="submit" className="button button-primary">{busy ? "Enviando…" : "Enviar avistamiento"}</button><p className="form-privacy">Podés enviarlo sin crear una cuenta. La ubicación exacta se compartirá de forma privada con el dueño si el avistamiento resulta relevante. La identidad de la mascota siempre está por confirmar.</p></div>
             <p className="form-privacy form-legal">Consultá los <Link href="/terminos" target="_blank" rel="noopener noreferrer" aria-label="Términos y condiciones, se abre en otra pestaña">Términos y condiciones</Link> antes de enviar tu avistamiento.</p>
           </fieldset>
         </form>

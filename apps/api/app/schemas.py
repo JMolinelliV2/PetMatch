@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
-Species = Literal["dog", "cat", "rabbit", "bird", "other", "unknown"]
+from app.species import Species
 Sex = Literal["male", "female", "unknown"]
 
 
@@ -29,6 +29,7 @@ class UserRead(ORMModel):
     email: str
     pending_email: str | None = None
     name: str
+    avatar_version: UUID | None = None
     phone: str | None
     notification_preferences: dict
     status: str
@@ -78,6 +79,13 @@ class PetUpdate(BaseModel):
     distinctive_features: list[str] | None = None
     collar_description: str | None = Field(default=None, max_length=255)
     microchip_reference: str | None = Field(default=None, max_length=80)
+
+    @field_validator("species")
+    @classmethod
+    def species_cannot_be_null(cls, value):
+        if value is None:
+            raise ValueError("La especie debe ser perro o gato")
+        return value
 
     @field_validator("sex")
     @classmethod
@@ -181,6 +189,7 @@ class LostCaseRead(ORMModel):
     longitude: float | None
     location_accuracy_meters: int | None
     description: str
+    description_format: str = "LEGACY"
     public_location: str | None
     search_radius_meters: int
     created_at: datetime
@@ -189,6 +198,7 @@ class LostCaseRead(ORMModel):
 
 class PublicPhotoRead(BaseModel):
     id: UUID
+    is_primary: bool = False
 
 
 class PublicPhotoList(BaseModel):
@@ -208,6 +218,7 @@ class PublicLostDogRead(BaseModel):
     public_location: str | None
     lost_at: datetime
     photo_url: str | None
+    publisher_name: str | None = None
 
 
 class PublicLostDogList(BaseModel):
@@ -248,12 +259,19 @@ class ObservationUpdate(BaseModel):
     size: str | None = Field(default=None,max_length=24)
     public_location: str | None = Field(default=None,max_length=350)
     share_contact: bool | None = None
-    description: str | None = Field(default=None, min_length=1, max_length=4000)
+    description: str | None = Field(default=None, max_length=4000)
     observed_at: datetime | None = None
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
     location_accuracy_meters: int | None = Field(default=None, ge=0)
     confidence: float | None = Field(default=None, ge=0, le=1)
+
+    @field_validator("species")
+    @classmethod
+    def species_cannot_be_null(cls, value):
+        if value is None:
+            raise ValueError("La especie debe ser perro o gato")
+        return value
 
     @field_validator("share_contact")
     @classmethod
@@ -269,6 +287,26 @@ class ObservationUpdate(BaseModel):
         return value
 
 
+class OwnedObservationRead(ORMModel):
+    """Private edit data. Exact coordinates are returned only to the report author."""
+    id: UUID
+    public_id: str
+    species: str
+    sex: str
+    primary_color: str
+    size: str
+    description: str
+    description_format: str = "LEGACY"
+    source_type: str
+    observed_at: datetime
+    public_location: str | None
+    latitude: float | None
+    longitude: float | None
+    location_accuracy_meters: int | None
+    share_contact: bool
+    linked_case_id: UUID | None
+
+
 class ObservationRead(ORMModel):
     id: UUID
     public_id: str
@@ -278,6 +316,7 @@ class ObservationRead(ORMModel):
     size: str
     public_location: str | None
     description: str
+    description_format: str = "LEGACY"
     observed_at: datetime
     latitude: float | None
     longitude: float | None
@@ -315,6 +354,19 @@ class PhotoRead(ORMModel):
     width: int | None
     height: int | None
     created_at: datetime
+    is_primary: bool = False
+
+
+class PhotoAlbumRead(BaseModel):
+    items: list[PhotoRead]
+    primary_photo_id: UUID | None
+    max_photos: int = 5
+
+
+class PhotoCoverInput(BaseModel):
+    owner_type: Literal["pet", "lost_case", "observation"]
+    owner_id: UUID
+    photo_id: UUID
 
 
 class PhotoUpdate(BaseModel):

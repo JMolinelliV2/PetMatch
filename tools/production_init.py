@@ -20,6 +20,20 @@ def prepare_b2_secrets(root: Path, secrets_directory: Path | None = None):
         path.chmod(0o444)
 
 
+def prepare_payment_secrets(root: Path, secrets_directory: Path | None = None):
+    """Prepare only empty payment placeholders; preserve installed credentials."""
+    directory = secrets_directory if secrets_directory is not None else root.resolve() / ".secrets"
+    if not directory.is_dir() or directory.is_symlink():
+        raise ValueError("Initialize the private secrets directory first")
+    for name in ("mp_access_token", "mp_webhook_secret"):
+        path = directory / name
+        if path.exists() or path.is_symlink():
+            continue
+        with open(path, "x", encoding="utf-8", opener=lambda name, flags: os.open(name, flags, 0o600)) as stream:
+            stream.write("\n")
+        path.chmod(0o444)
+
+
 def initialize(root: Path, domain="mascomatch.com"):
     root = root.resolve()
     if not re.fullmatch(r"[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?", domain) or "." not in domain:
@@ -44,6 +58,8 @@ def initialize(root: Path, domain="mascomatch.com"):
         "s3_secret_key": secrets.token_urlsafe(32),
         "vision_s3_secret": secrets.token_urlsafe(32),
         "smtp_password": "",
+        "mp_access_token": "",
+        "mp_webhook_secret": "",
         "metrics_token": secrets.token_urlsafe(48),
         "backup_key": base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(),
         "b2_key_id":"",
@@ -111,6 +127,13 @@ SMTP_PORT=587
 SMTP_USERNAME=
 SMTP_FROM=MascoMatch <info@{domain}>
 SMTP_TLS_MODE=starttls
+MP_ENABLED=false
+MP_ENVIRONMENT=test
+MP_COLLECTOR_ID=
+MP_APPLICATION_ID=
+MP_PUBLIC_BASE_URL=https://{domain}
+RATE_LIMIT_DONATION=6
+RATE_LIMIT_PAYMENT_WEBHOOK=180
 NEXT_PUBLIC_SEARCH_COUNTRY=UY
 BACKUP_INTERVAL_SECONDS=21600
 BACKUP_LOCAL_KEEP=14
@@ -134,11 +157,15 @@ if __name__ == "__main__":
     parser.add_argument("--directory", type=Path, default=Path.cwd())
     parser.add_argument("--domain", default="mascomatch.com")
     parser.add_argument("--prepare-b2-secrets",action="store_true",help="Add missing empty B2 secret files to an existing installation")
+    parser.add_argument("--prepare-payment-secrets", action="store_true", help="Add missing empty payment secret files without replacing credentials")
     parser.add_argument("--secrets-directory",type=Path,help="Existing private secrets directory, for upgrade preparation only")
     args = parser.parse_args()
     if args.prepare_b2_secrets:
         prepare_b2_secrets(args.directory,args.secrets_directory)
         print("Dedicated B2 secret placeholders ready; existing keys preserved.")
+    elif args.prepare_payment_secrets:
+        prepare_payment_secrets(args.directory, args.secrets_directory)
+        print("Payment secret placeholders ready; existing credentials preserved.")
     else:
         print("Created private deployment files:", initialize(args.directory, args.domain))
         print("Store backup_key separately from the server; losing it makes backups unrecoverable.")

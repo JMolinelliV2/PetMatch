@@ -8,6 +8,7 @@ from app.db.session import get_db
 from app.analysis.service import purge_owner, schedule_text
 from app.dependencies import current_user, verified_user
 from app.models import LostCase, Pet, User
+from app.species import require_supported_species
 from app.schemas import LostCaseCreate, LostCaseRead, LostCaseUpdate
 from app.matching.linked import mark_related_pending
 from app.photo_reminders import schedule_reminder
@@ -29,6 +30,7 @@ def create_lost_case(payload: LostCaseCreate, request: Request, db: Session = De
     pet = db.scalar(select(Pet).where(Pet.id == payload.pet_id, Pet.owner_id == user.id))
     if pet is None:
         raise HTTPException(status_code=404, detail="Pet not found")
+    require_supported_species(pet.species)
     case = LostCase(**payload.model_dump())
     db.add(case)
     db.flush()
@@ -58,6 +60,8 @@ def update_lost_case(case_id: UUID, payload: LostCaseUpdate, request: Request, d
     user=lock_active_user(db,user)
     case = owned_case(db, case_id, user)
     changes = payload.model_dump(exclude_unset=True)
+    if changes.get("status") == "ACTIVE":
+        require_supported_species(case.pet.species)
     for key in ("recovery_reason","recovery_match_id","recovery_observation_id"):changes.pop(key,None)
     # Owners can retire an existing notice while their email confirmation is pending.
     if set(changes) != {"status"} or changes["status"] not in {"FOUND", "CLOSED", "CANCELLED"}:
@@ -69,6 +73,8 @@ def update_lost_case(case_id: UUID, payload: LostCaseUpdate, request: Request, d
         changes.pop("status")
     for field, value in changes.items():
         setattr(case, field, value)
+    if "description" in changes:
+        case.description_format = "USER_TEXT"
     db.flush()
     schedule_text(db, "lost_case", case.id)
     mark_related_pending(db, "lost_case", case.id)

@@ -21,7 +21,7 @@ const steps = [
     title: "Cada pista suma.",
     description: [
       "Si reconocés a una mascota publicada, enviá un avistamiento desde su aviso indicando dónde y cuándo la viste. Sumá una foto si tenés; ese reporte breve se puede enviar sin cuenta.",
-      "Si todavía no hay un aviso, con una cuenta podés reportarla desde “Vi una mascota”. Si el animal está a salvo con vos, usá “Encontré una mascota” para que su familia pueda encontrarlo.",
+      "Si todavía no hay un aviso, con una cuenta podés reportarla desde “Vi una mascota”. Si la mascota está a salvo con vos, usá “Encontré una mascota” para que su familia pueda encontrarla.",
     ],
   },
   {
@@ -39,7 +39,7 @@ const steps = [
     title: "El reencuentro cierra la búsqueda.",
     description: [
       "Confirmar que un avistamiento corresponde a tu mascota registra una pista y mantiene la búsqueda abierta.",
-      "Cuando ya esté con vos, marcá “Ya la recuperé” desde Mis avisos. El aviso deja de aparecer entre los animales perdidos y podés compartir una reseña sobre tu experiencia.",
+      "Cuando ya esté con vos, marcá “Ya la recuperé” desde Mis avisos. El aviso deja de aparecer en el listado público y podés compartir una reseña sobre tu experiencia.",
     ],
   },
 ] as const;

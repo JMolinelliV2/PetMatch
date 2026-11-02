@@ -93,7 +93,7 @@ export function NotificationsInbox({ selectedId }: { selectedId?: string }) {
   function feedbackSaved(noticeId: string, result: FeedbackSaved) {
     requestEpoch.current += 1; inboxController.current?.abort();
     if (result.recovered) setReviewCaseId(result.caseId);
-    setFeedbackMessage(result.recovered ? "Tu mascota quedó marcada como encontrada. La búsqueda está cerrada y el aviso ya no aparece entre los animales perdidos."
+    setFeedbackMessage(result.recovered ? "Tu mascota quedó marcada como encontrada. La búsqueda está cerrada y el aviso ya no aparece en el listado público."
       : result.status === "RESOLVED" ? "Confirmaste el avistamiento. La búsqueda sigue activa hasta que recuperes a tu mascota."
       : result.status === "FALSE_MATCH" ? "Descartaste este avistamiento. Tu búsqueda sigue activa." : "Guardaste el avistamiento como posible coincidencia. Tu búsqueda sigue activa.");
     setInbox(current => {
@@ -182,8 +182,7 @@ export function NotificationsInbox({ selectedId }: { selectedId?: string }) {
   }, [selectedId, user?.id, inbox, action]);
 
   return <main id="main-content" className="page notifications-page">
-    <Link href="/" className="back-link"><span aria-hidden="true">←</span> Volver al inicio</Link>
-    <h1>Notificaciones</h1><p className="page-intro">Avistamientos que podrían ayudar a encontrar a tus animales.</p>
+    <h1>Notificaciones</h1><p className="page-intro">Avistamientos que podrían ayudar a encontrar a tus mascotas.</p>
     {checking ? <p role="status" className="page-intro">Consultando tu sesión…</p> : !user ? <form onSubmit={login} className="notification-login">
       <h2>Ingresá con la cuenta de tu aviso</h2><p className="field-help">Así podrás ver los lugares y las fotos que compartieron.</p>
       <fieldset disabled={busy} className="form-controls section-fields">
@@ -197,7 +196,7 @@ export function NotificationsInbox({ selectedId }: { selectedId?: string }) {
       {user.email_verification_required && !user.email_verified && <VerifyEmailNotice email={user.email} />}
       <div className="notifications-account"><span>{user.name}</span><button type="button" className="text-button" disabled={Boolean(action)} onClick={() => void logout()}>Cerrar sesión</button></div>
       <p><Link href="/mi-cuenta#notificaciones" className="text-button">Configurar notificaciones en Mi cuenta</Link></p>
-      {selectedId ? <Link href="/notificaciones" className="text-button">Volver a la bandeja de notificaciones</Link> : <>
+      {!selectedId && <>
         <div className="notifications-filters" role="group" aria-label="Mostrar notificaciones">{inboxViews.map(option => <button type="button" key={option.value} className="notification-filter" aria-pressed={view === option.value} disabled={Boolean(action)} onClick={() => { setView(option.value); setOffset(0); setActionMessage(""); setError(""); }}>{option.label}</button>)}</div>
         <p className="field-help">Al abrir una alerta se marca como leída. Las leídas quedan en Todas; podés archivarlas y recuperarlas desde Archivadas.</p>
       </>}

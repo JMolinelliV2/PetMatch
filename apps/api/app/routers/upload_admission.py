@@ -46,7 +46,7 @@ def admit(request: Request, user=Depends(optional_user)):
             count, _ = redis.eval(RATE_SCRIPT, 1, private_key("upload", str(user.id) if user else client_address(request.scope)))
             if count > settings.rate_limit_publish:
                 raise HTTPException(status_code=429, detail="Esperá un momento antes de enviar más fotos.", headers={"Retry-After":"60"})
-            accepted = redis.eval(SLOT_SCRIPT, 1, SLOTS, time.time(), time.time()+120, settings.upload_slots, lease)
+            accepted = redis.eval(SLOT_SCRIPT, 1, SLOTS, time.time(), time.time()+240, settings.upload_slots, lease)
             if not accepted:
                 raise HTTPException(status_code=429, detail="Estamos recibiendo otras fotos. Intentá de nuevo en unos segundos.", headers={"Retry-After":"10"})
     except (RedisError, OSError) as exc:

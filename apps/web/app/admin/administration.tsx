@@ -6,6 +6,7 @@ import { ReportId } from "../ui/report-id";
 import { AdminRecords } from "./admin-records";
 import { MatchingDashboard } from "./matching-dashboard";
 import { OperationsDashboard } from "./operations-dashboard";
+import { DonationsDashboard } from "./donations-dashboard";
 import { AdminDateRange, adminDate, emptyPeriod, periodQuery } from "./date-range";
 import type { AdminPeriod } from "./date-range";
 import { AdminWorkspace } from "./admin-workspace";
@@ -72,6 +73,6 @@ function PlatformManagement({period,onPeriodChange}:{period:AdminPeriod;onPeriod
 
 function AdminPanel({user,logout}:{user:SessionUser;logout:()=>Promise<void>}) {
   const [period,setPeriod]=useState<AdminPeriod>(emptyPeriod);
-  return <AdminReloadProvider><AdminWorkspace user={user} logout={logout}>{(view,navigate)=>view==="growth"||view==="usage"||view==="analytics-matching"||view==="impact"||view==="inventory"?<AnalyticsDashboard section={view} period={period} onPeriodChange={setPeriod}/>:view==="matching"?<MatchingDashboard period={period} onPeriodChange={setPeriod}/>:view==="management"?<PlatformManagement period={period} onPeriodChange={setPeriod}/>:<OperationsDashboard section={view} onNavigate={navigate} period={period} onPeriodChange={setPeriod}/>}</AdminWorkspace></AdminReloadProvider>;
+  return <AdminReloadProvider><AdminWorkspace user={user} logout={logout}>{(view,navigate)=>view==="growth"||view==="usage"||view==="analytics-matching"||view==="impact"||view==="inventory"?<AnalyticsDashboard section={view} period={period} onPeriodChange={setPeriod}/>:view==="matching"?<MatchingDashboard period={period} onPeriodChange={setPeriod}/>:view==="management"?<PlatformManagement period={period} onPeriodChange={setPeriod}/>:view==="donations"?<DonationsDashboard period={period} onPeriodChange={setPeriod}/>:<OperationsDashboard section={view} onNavigate={navigate} period={period} onPeriodChange={setPeriod}/>}</AdminWorkspace></AdminReloadProvider>;
 }
 export function Administration() { return <AccountSession showAccountHeader={false}>{(user,actions) => user.admin_access ? <AdminPanel user={user} logout={actions.logout}/> : <div className="notice notice-warning"><h2>Acceso restringido</h2><p>Este panel está reservado a la cuenta administradora con su correo confirmado. Tu sesión actual no tiene acceso.</p><div className="location-actions"><Link className="text-button" href="/mi-cuenta">Ir a mi cuenta</Link><button className="text-button" type="button" onClick={()=>void actions.logout()}>Cerrar sesión</button></div></div>}</AccountSession>; }

@@ -26,7 +26,7 @@ Apoyanos utiliza el contenedor de 1280 px y una introducción centrada de hasta 
 
 Las reseñas de portada usan el mismo contenedor, tres columnas en escritorio, dos bajo 950 px y una bajo 640 px. Sin reseñas visibles el componente devuelve `null`, por lo que no agrega espacio ni encabezado vacío.
 
-El mapa de animales perdidos ocupa todo el ancho del bloque de avisos, con lienzo de 420 px en escritorio y 360 px en móvil. El encabezado y el acceso al mapa completo se apilan bajo 640 px. La miniatura del pin tiene 240 px de ancho y altura limitada con desplazamiento interno cuando hace falta.
+El mapa de mascotas perdidas ocupa todo el ancho del bloque de avisos, con lienzo de 420 px en escritorio y 360 px en móvil. El encabezado y el acceso al mapa completo se apilan bajo 640 px. La miniatura del pin tiene 240 px de ancho y altura limitada con desplazamiento interno cuando hace falta.
 
 Debajo del mapa completo, la lista desplegable presenta tarjetas en dos columnas y pasa a una columna bajo 950 px. Cada tarjeta divide miniatura cuadrada y contenido; la foto mide 112 px, reducidos a 88 px bajo 640 px. La zona y la fecha pueden ocupar varias líneas sin desbordar.
 
@@ -50,17 +50,17 @@ Mi cuenta reúne contacto, notificaciones por correo y eliminación de cuenta, e
 
 Portada: navegación, presentación y acciones para los tres tipos de reporte, Cómo funciona, avisos activos reales, acceso al mapa, bloque de apoyo y pie con navegación, contacto y términos. Cómo funciona explica publicación y confirmación de correo, aportes de la comunidad, revisión de posibles coincidencias y cierre después del reencuentro en cuatro pasos. Formularios: título, tres etapas, campos del paso actual, validación, acciones y ayuda. Mis avisos: sesión, dos cantidades derivadas de los datos, casos con controles, reportes enviados y acceso a notificaciones.
 
-Apoyanos: regreso al inicio, presentación, aviso de disponibilidad próxima, frecuencia del aporte, niveles, monto personalizado, resumen, destino de los aportes, preguntas frecuentes y acción para explorar animales perdidos.
+Apoyanos: regreso al inicio, presentación, aviso de disponibilidad próxima, frecuencia del aporte, niveles, monto personalizado, resumen, destino de los aportes, preguntas frecuentes y acción para explorar mascotas perdidas.
 
-La portada incorpora las reseñas después de los avisos y el acceso al mapa, antes de Apoyanos. En Mis avisos y Notificaciones, la invitación aparece después de guardar el cierre o la recuperación del animal y se mantiene separada del estado de la búsqueda.
+La portada incorpora las reseñas después de los avisos y el acceso al mapa, antes de Apoyanos. En Mis avisos y Notificaciones, la invitación aparece después de guardar el cierre o la recuperación de la mascota y se mantiene separada del estado de la búsqueda.
 
-El antiguo enlace al mapa se reemplaza por el mapa incrustado después de las tarjetas de avisos activos. Muestra únicamente animales perdidos con ubicación; el enlace **Abrir mapa completo** mantiene el acceso a avistamientos, encontrados y filtros de la página `/mapa`.
+El antiguo enlace al mapa se reemplaza por el mapa incrustado después de las tarjetas de avisos activos. Muestra únicamente mascotas perdidas con ubicación; el enlace **Abrir mapa completo** mantiene el acceso a avistamientos, encontrados y filtros de la página `/mapa`.
 
 ## Navigation
 
 Términos y condiciones se enlaza dentro de la sección Legales del pie compartido, con título propio y navegación asociada mediante `aria-labelledby`. Reutiliza los estilos de los otros grupos y el área de interacción de 44 px. Registro, revisión de los formularios y avistamiento breve muestran enlaces informativos que abren otra pestaña y anuncian ese comportamiento a lectores de pantalla. El índice nativo permite saltar a los encabezados con anclas; no se cambia la navegación ni la validación de los formularios.
 
-El pie enlaza las rutas existentes de animales perdidos, mapa, Cómo funciona, los tres tipos de reporte, Contacto y Apoyanos. Los grupos públicos usan landmarks `nav` con encabezados asociados; no se agregan accesos permanentes a Mis avisos o Notificaciones. Los enlaces admiten teclado, muestran el foco existente y tienen al menos 44 px de altura.
+El pie enlaza las rutas existentes de mascotas perdidas, mapa, Cómo funciona, los tres tipos de reporte, Contacto y Apoyanos. Los grupos públicos usan landmarks `nav` con encabezados asociados; no se agregan accesos permanentes a Mis avisos o Notificaciones. Los enlaces admiten teclado, muestran el foco existente y tienen al menos 44 px de altura.
 
 La bandeja inicia en Sin leer. Abrir alerta lleva al detalle y guarda la lectura; marcar una como leída la retira de esa vista. Todas conserva las alertas sin archivar. Archivar la mueve a Archivadas, donde Restaurar la devuelve a Todas. Los filtros indican selección con `aria-pressed` y las acciones muestran el resultado después del éxito del servidor. Se bloquean durante el guardado para evitar operaciones simultáneas.
 
@@ -70,7 +70,7 @@ Contacto y sugerencias está disponible en Explorar, el menú móvil y el pie co
 
 El enlace de configuración de la bandeja y de los correos abre `/mi-cuenta#notificaciones`. La sección se lleva a la vista después de cargar la sesión, incluso al entrar sin una sesión iniciada y luego ingresar desde esa página.
 
-Logo a la izquierda; Inicio, Perdí una mascota, Vi una mascota y Mis avisos en el centro; botón Apoyanos, notificaciones y cuenta a la derecha. Mis avisos y Notificaciones se muestran con sesión iniciada. Explorar conserva Animales perdidos, Mapa, Encontré una mascota y el enlace a `#como-funciona`. Apoyanos tiene un botón propio con corazón, borde y fondo coral suave; está fuera de los desplegables y disponible sin sesión. La ruta activa usa subrayado coral y `aria-current`. Bajo 1100 px la navegación se reúne en un menú nativo para dejar lugar a los accesos visibles. Bajo 640 px Apoyanos ocupa una segunda fila del encabezado, sin esconderse dentro del menú.
+Logo a la izquierda; Inicio, Perdí una mascota, Vi una mascota y Mis avisos en el centro; botón Apoyanos, notificaciones y cuenta a la derecha. Mis avisos y Notificaciones se muestran con sesión iniciada. Explorar conserva Mascotas perdidas, Mapa, Encontré una mascota y el enlace a `#como-funciona`. Apoyanos tiene un botón propio con corazón, borde y fondo coral suave; está fuera de los desplegables y disponible sin sesión. La ruta activa usa subrayado coral y `aria-current`. Bajo 1100 px la navegación se reúne en un menú nativo para dejar lugar a los accesos visibles. Bajo 640 px Apoyanos ocupa una segunda fila del encabezado, sin esconderse dentro del menú.
 
 La reseña se escribe dentro de Mis avisos o de la pantalla de la notificación de recuperación, sin cambiar de página. El autor vuelve a ella desde Mis avisos para retirarla; administración agrega la categoría Reseñas a los registros existentes.
 
@@ -78,9 +78,9 @@ Explorar y el menú móvil se cierran al pulsar fuera del desplegable, con mouse
 
 La flecha de Explorar reutiliza el chevron SVG de 16 px, centrado con el texto mediante flex. Apunta abajo al estar cerrado y arriba al estar abierto, siguiendo directamente el atributo nativo `open`, también al cerrar con Escape o pulsar fuera. La rotación dura 180 ms y se desactiva con la preferencia de movimiento reducido.
 
-Los círculos de animales perdidos abren una miniatura al pasar el mouse, tanto en portada como en `/mapa`. El cierre se demora 450 ms al salir para permitir mover el puntero hasta la tarjeta y usar **Ver aviso**. Pulsar el círculo, Enter o Espacio mantiene la tarjeta abierta; en táctil se abre con un toque. El foco tiene contorno azul y el estado se informa con `aria-expanded`. La miniatura muestra foto, nombre, rasgos, localidad y fecha. Las fichas abiertas en portada usan `origen=inicio` y vuelven a `/#mapa-perdidos`; las abiertas desde `/mapa` conservan su regreso a `/mapa`.
+Los círculos de mascotas perdidas abren una miniatura al pasar el mouse, tanto en portada como en `/mapa`. El cierre se demora 450 ms al salir para permitir mover el puntero hasta la tarjeta y usar **Ver aviso**. Pulsar el círculo, Enter o Espacio mantiene la tarjeta abierta; en táctil se abre con un toque. El foco tiene contorno azul y el estado se informa con `aria-expanded`. La miniatura muestra foto, nombre, rasgos, localidad y fecha. Las fichas abiertas en portada usan `origen=inicio` y vuelven a `/#mapa-perdidos`; las abiertas desde `/mapa` conservan su regreso a `/mapa`.
 
-La lista conserva `details` y `summary` nativos. La miniatura, el nombre y **Ver aviso** de un animal perdido llevan a su ficha con `origen=mapa`. Las capas, los filtros y el límite de 100 reportes siguen usando los mismos puntos del mapa.
+La lista conserva `details` y `summary` nativos. La miniatura, el nombre y **Ver aviso** de una mascota perdida llevan a su ficha con `origen=mapa`. Las capas, los filtros y el límite de 100 reportes siguen usando los mismos puntos del mapa.
 
 En avistamientos y encontrados, la foto y **Ver detalles en el mapa** centran el punto y abren el reporte elegido. Los puntos tienen un área de interacción de 44 px y admiten Enter y Espacio. Escape cierra la tarjeta y devuelve el foco. Un aviso relacionado solo enlaza si está activo y visible, conserva `origen=mapa` y aclara que no confirma la identidad.
 
@@ -156,9 +156,9 @@ Apoyanos reutiliza los iconos SVG de corazón, huella, coincidencias y cuidado d
 
 Las reseñas usan el corazón existente y estrellas de texto; no añaden avatares, fotografías ni imágenes del aviso. El nombre público elegido se muestra independientemente de la identidad privada de la cuenta.
 
-Los marcadores de animales perdidos son círculos de 56 px con foto real recortada mediante `object-fit: cover`, borde blanco de 3 px y anillo coral. Sin foto o ante error se reutiliza la huella de marca. La API informa la presencia de foto en la misma consulta de puntos; el navegador carga la imagen desde el endpoint público que elimina metadatos. No se exponen claves de almacenamiento ni coordenadas precisas.
+Los marcadores de mascotas perdidas son círculos de 56 px con foto real recortada mediante `object-fit: cover`, borde blanco de 3 px y anillo coral. Sin foto o ante error se reutiliza la huella de marca. La API informa la presencia de foto en la misma consulta de puntos; el navegador carga la imagen desde el endpoint público que elimina metadatos. No se exponen claves de almacenamiento ni coordenadas precisas.
 
-Las tarjetas de la lista reutilizan `DogPhoto` para animales perdidos y `ObservationPhoto` para fotos propias de avistamientos y encontrados. Las miniaturas se cargan de forma diferida desde endpoints públicos que procesan las imágenes y eliminan metadatos; no se entregan claves ni URLs firmadas del almacenamiento. Sin foto usan ojo o corazón y **Sin foto**, y ante error **Foto no disponible**. En la tarjeta del mapa la foto mide 144 px de alto y usa `object-fit: contain` para ver el animal completo.
+Las tarjetas de la lista reutilizan `DogPhoto` para mascotas perdidas y `ObservationPhoto` para fotos propias de avistamientos y encontrados. Las miniaturas se cargan de forma diferida desde endpoints públicos que procesan las imágenes y eliminan metadatos; no se entregan claves ni URLs firmadas del almacenamiento. Sin foto usan ojo o corazón y **Sin foto**, y ante error **Foto no disponible**. En la tarjeta del mapa la foto mide 144 px de alto y usa `object-fit: contain` para ver la mascota completa.
 
 ## Cards and Content Blocks
 
@@ -178,9 +178,9 @@ Guardar el contacto en Mi cuenta abre un `dialog` nativo de hasta 440 px, centra
 
 La tarjeta de carga usa superficie blanca, borde existente, radio de 16 px, padding de 36 × 24 px y mensaje centrado. La huella se separa 24 px del título. Los bloques provisionales son estáticos, de color neutro, con 16 px entre resúmenes y 20 px dentro de la tarjeta. Se retiran cuando llegan los datos o se muestra un error, siguiendo los estados existentes de la sesión y del listado.
 
-Tarjetas blancas, bordes discretos, radios de 12–16 px y sombra mínima. Componentes compartidos para stepper, fotos, iconos, tarjetas de animales y compatibilidad. El panel muestra las cantidades disponibles en sus datos; no se inventan nuevos avistamientos, compartidos, historias o recorridos. La foto de un aviso activo respeta el endpoint público y sus restricciones.
+Tarjetas blancas, bordes discretos, radios de 12–16 px y sombra mínima. Componentes compartidos para stepper, fotos, iconos, tarjetas de mascotas y compatibilidad. El panel muestra las cantidades disponibles en sus datos; no se inventan nuevos avistamientos, compartidos, historias o recorridos. La foto de un aviso activo respeta el endpoint público y sus restricciones.
 
-El paso 1 de Cómo funciona conserva la ilustración SVG de publicación de ManyPixels. Los pasos 2, 3 y 4 usan adaptaciones de las referencias del usuario: una mano con lupa y preguntas, un robot analizando información y una persona con su perro tras el reencuentro. Se adaptaron a coral, azul y fondos suaves del sitio y se sirven como WebP con transparencia. Conservan texto alternado, una línea curva y puntos numerados. La línea se colorea con el desplazamiento y el texto tiene una entrada suave; las imágenes y sus sellos permanecen estáticos al desplazarse y pasar el puntero. Cada paso muestra su título y dos párrafos con toda la explicación visible; se retiraron CTA, pretítulos y desplegables. El contenido distingue confirmar un avistamiento de recuperar al animal y explica el envío breve sin cuenta. La preferencia de movimiento reducido elimina las animaciones y transformaciones. El origen, tratamiento y prompts se documentan en `apps/web/public/images/README.md`.
+El paso 1 de Cómo funciona conserva la ilustración SVG de publicación de ManyPixels. Los pasos 2, 3 y 4 usan adaptaciones de las referencias del usuario: una mano con lupa y preguntas, un robot analizando información y una persona con su perro tras el reencuentro. Se adaptaron a coral, azul y fondos suaves del sitio y se sirven como WebP con transparencia. Conservan texto alternado, una línea curva y puntos numerados. La línea se colorea con el desplazamiento y el texto tiene una entrada suave; las imágenes y sus sellos permanecen estáticos al desplazarse y pasar el puntero. Cada paso muestra su título y dos párrafos con toda la explicación visible; se retiraron CTA, pretítulos y desplegables. El contenido distingue confirmar un avistamiento de recuperar a la mascota y explica el envío breve sin cuenta. La preferencia de movimiento reducido elimina las animaciones y transformaciones. El origen, tratamiento y prompts se documentan en `apps/web/public/images/README.md`.
 
 Los niveles de aporte voluntario son etiquetas de radios nativos: toda la tarjeta permite seleccionar, el teclado conserva el comportamiento del grupo y el foco tiene contorno azul. Nombre, importe, frecuencia y descripción tienen jerarquía propia. Las preguntas frecuentes usan `details` y `summary` nativos. No se muestran cantidades de donantes, metas ni testimonios ficticios.
 
@@ -202,9 +202,9 @@ El icono de ampliar reutiliza el sistema SVG existente. En fotos con navegación
 
 Acción principal coral, secundaria blanca con borde y terciaria azul con texto. Radios de 10–12 px. En móvil las acciones principales de publicación ocupan el ancho disponible. Todos los controles de cerrar, quitar foto o navegar tienen texto o nombre accesible. Se mantiene el bloqueo de controles durante las operaciones y el feedback de guardado, error y éxito.
 
-Los accesos a animales perdidos y animales encontrados se mantienen en los bloques existentes de la portada y la navegación.
+Los accesos a mascotas perdidas y mascotas encontradas se mantienen en los bloques existentes de la portada y la navegación.
 
-La portada enlaza a **Conocé cómo apoyar**. En Apoyanos, **Donaciones próximamente** está deshabilitado y acompañado por la explicación de disponibilidad. Elegir un nivel no genera un cobro. La acción final **Ver animales perdidos** permite seguir participando sin aportar dinero.
+La portada enlaza a **Conocé cómo apoyar**. En Apoyanos, **Donaciones próximamente** está deshabilitado y acompañado por la explicación de disponibilidad. Elegir un nivel no genera un cobro. La acción final **Ver mascotas perdidas** permite seguir participando sin aportar dinero.
 
 La invitación ofrece **Escribir una reseña** y **Ahora no**. El formulario ofrece **Publicar reseña** y **Cancelar**. El cierre del aviso no depende de estas acciones. Una reseña guardada muestra **Retirar mi reseña de la portada**.
 
@@ -214,9 +214,9 @@ La página de condiciones prioriza lectura clara y una presentación adecuada pa
 
 El pie crea un cierre claro y cercano con más espacio para la marca y las acciones públicas. Mantiene visible la gratuidad de publicar y buscar y ofrece participación mediante reportes, sugerencias y apoyo. Su estructura compartida da continuidad entre páginas sin cambiar formularios o servicios.
 
-Las fotos se amplían dentro de la página y mantienen el contexto del aviso o avistamiento. La ventana se centra en ver el animal completo y conserva el estilo simple de la plataforma. Su implementación y revisión están documentadas en `photo-viewer.md`.
+Las fotos se amplían dentro de la página y mantienen el contexto del aviso o avistamiento. La ventana se centra en ver la mascota completa y conserva el estilo simple de la plataforma. Su implementación y revisión están documentadas en `photo-viewer.md`.
 
-Mi cuenta tiene una página propia de hasta 640 px, con contacto en una tarjeta blanca y eliminación en un desplegable separado. Correo pendiente, confirmación, errores y guardado se explican junto al formulario. Recuperar cuenta reutiliza el ancho, el regreso, el título, los campos y la tarjeta de ingreso y registro; sus resultados y enlaces permanecen dentro de esa tarjeta. El ingreso lleva directamente a Mis avisos o a confirmar el correo, sin la pantalla intermedia de sesión ya iniciada. La portada usa **¿Encontraste una mascota? Reportá un animal encontrado** y Apoyanos explica el procesamiento de IA con revisión humana.
+Mi cuenta tiene una página propia de hasta 640 px, con contacto en una tarjeta blanca y eliminación en un desplegable separado. Correo pendiente, confirmación, errores y guardado se explican junto al formulario. Recuperar cuenta reutiliza el ancho, el regreso, el título, los campos y la tarjeta de ingreso y registro; sus resultados y enlaces permanecen dentro de esa tarjeta. El ingreso lleva directamente a Mis avisos o a confirmar el correo, sin la pantalla intermedia de sesión ya iniciada. La portada usa **¿Encontraste una mascota? Reportá una mascota encontrada** y Apoyanos explica el procesamiento de IA con revisión humana.
 
 Herramienta clara y cercana, con fotografías como principal elemento emocional. No se agregan ilustraciones decorativas, métricas ficticias ni mensajes de identidad confirmada a partir de una puntuación. La compatibilidad se muestra con contexto y conserva la revisión humana.
 
@@ -235,7 +235,7 @@ Los mapas reutilizan Leaflet, las teselas existentes de OpenStreetMap y las coor
 - El avistamiento vinculado conserva ubicación, hora y fotos opcionales, envío sin cuenta, identificador de solicitud y consulta posterior del estado.
 - Mis avisos conserva edición, fotos, coincidencias, feedback, encontrado, cierre y reapertura. El mapa de última ubicación usa los datos privados del caso propio.
 - La navegación conserva catálogo, mapa, notificaciones, recuperación, confirmación y administración mediante sus rutas existentes.
-- Los avisos abiertos desde los puntos o la lista del mapa incluyen `origen=mapa` y muestran **Volver al mapa**. Los abiertos desde el mapa de portada usan `origen=inicio` y muestran **Volver al mapa del inicio**. Los avisos abiertos desde el catálogo conservan **Volver a animales perdidos**. Solo se admiten estos orígenes conocidos, sin aceptar direcciones de regreso arbitrarias.
+- Los avisos abiertos desde los puntos o la lista del mapa incluyen `origen=mapa` y muestran **Volver al mapa**. Los abiertos desde el mapa de portada usan `origen=inicio` y muestran **Volver al mapa del inicio**. Los avisos abiertos desde el catálogo conservan **Volver a mascotas perdidas**. Solo se admiten estos orígenes conocidos, sin aceptar direcciones de regreso arbitrarias.
 
 ## Verificación
 
@@ -305,4 +305,4 @@ TypeScript y la sintaxis Python terminaron sin errores. La consulta del mapa mos
 
 ### Recepción de reportes vinculados del 10 de octubre de 2026
 
-TypeScript y la sintaxis Python terminaron sin errores. Se recuperó el avistamiento real omitido de Pablo, con una alerta de recepción activa y correo aceptado por SMTP, sin cambiar el resultado incompatible ni marcar al animal como encontrado. Mis avisos y Notificaciones muestran por separado la recepción y el resultado de la comparación. No se agregaron ni ejecutaron pruebas automatizadas; se mantuvieron las comprobaciones existentes actualizando sus expectativas. La revisión de la reparación consultó estados y cantidades sin exponer contacto ni coordenadas.
+TypeScript y la sintaxis Python terminaron sin errores. Se recuperó el avistamiento real omitido de Pablo, con una alerta de recepción activa y correo aceptado por SMTP, sin cambiar el resultado incompatible ni marcar a la mascota como encontrada. Mis avisos y Notificaciones muestran por separado la recepción y el resultado de la comparación. No se agregaron ni ejecutaron pruebas automatizadas; se mantuvieron las comprobaciones existentes actualizando sus expectativas. La revisión de la reparación consultó estados y cantidades sin exponer contacto ni coordenadas.

@@ -1,6 +1,6 @@
 # Fotos ampliadas
 
-Las fotos de avisos perdidos, avistamientos y animales encontrados se pueden abrir en una ventana dentro de la página. También se pueden ampliar desde Mis avisos y las notificaciones. Cuando hay varias imágenes, la ventana permite recorrerlas con Anterior, Siguiente o las flechas del teclado y muestra la posición actual.
+Las fotos de avisos perdidos, avistamientos y mascotas encontradas se pueden abrir en una ventana dentro de la página. También se pueden ampliar desde Mis avisos y las notificaciones. Cuando hay varias imágenes, la ventana permite recorrerlas con Anterior, Siguiente o las flechas del teclado y muestra la posición actual.
 
 ## Interacción
 

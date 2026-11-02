@@ -24,6 +24,9 @@ def has_photo(db, case):
 
 
 def schedule_reminder(db, case):
+    from app.species import is_supported_species
+    if not is_supported_species(case.pet.species):
+        return
     if case.status != "ACTIVE" or case.moderation_status != "VISIBLE" or has_photo(db, case):
         return
     if db.get(PhotoReminder, case.id) is None:
@@ -53,6 +56,7 @@ def build_message(case, pet, owner):
 
 
 def deliver_pending(session_factory=None):
+    from app.species import is_supported_species
     if settings.mail_delivery_mode == "disabled":
         return 0
     factory = session_factory or SessionLocal
@@ -77,7 +81,7 @@ def deliver_pending(session_factory=None):
             if reminder is None:
                 continue
             pet = db.get(Pet, case.pet_id)
-            if case.status != "ACTIVE" or case.moderation_status != "VISIBLE" or not owner or owner.status != "ACTIVE" or has_photo(db, case):
+            if not is_supported_species(pet.species) or case.status != "ACTIVE" or case.moderation_status != "VISIBLE" or not owner or owner.status != "ACTIVE" or has_photo(db, case):
                 reminder.status = "CANCELLED"
             elif owner.notification_preferences.get("email", True) is False:
                 reminder.status = "SKIPPED"

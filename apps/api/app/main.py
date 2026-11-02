@@ -13,6 +13,8 @@ from app.core.observability import ObservabilityMiddleware
 from app.routers import analysis, auth, contact, dashboard, linked_sightings, lost_cases, map, matches, moderation, notifications, observations, operations, pets, photos, public_lost_dogs, public_observations, reviews, upload_admission
 from app.routers import admin_matching, admin_operations
 from app.routers import analytics, admin_analytics
+from app.routers import account_avatar
+from app.routers import donations
 
 
 @asynccontextmanager
@@ -24,9 +26,11 @@ async def lifespan(application: FastAPI):
     from app.photo_reminders import delivery_loop as photo_reminder_loop
     from app.account_management import cleanup_loop
     from app.contact_mail import delivery_loop as contact_delivery_loop
+    from app.payments import reconciliation_loop as donation_reconciliation_loop
     tasks = [asyncio.create_task(reconciliation_loop()), asyncio.create_task(delivery_loop()), asyncio.create_task(general_matching_loop()),asyncio.create_task(account_delivery_loop()), asyncio.create_task(photo_reminder_loop())]
     tasks.append(asyncio.create_task(cleanup_loop()))
     tasks.append(asyncio.create_task(contact_delivery_loop()))
+    tasks.append(asyncio.create_task(donation_reconciliation_loop()))
     from app.operational_tracking import cleanup_loop as tracking_cleanup_loop
     tasks.append(asyncio.create_task(tracking_cleanup_loop()))
     from app.product_analytics import cleanup_loop as analytics_cleanup_loop
@@ -65,11 +69,13 @@ app.add_middleware(ObservabilityMiddleware)
 
 @app.middleware("http")
 async def analytics_body_limit(request,call_next):
-    if request.url.path.rstrip("/")=="/api/v1/analytics/events":
+    path = request.url.path.rstrip("/")
+    if path == "/api/v1/analytics/events" or path.startswith("/api/v1/payments/") and request.method == "POST":
         body=bytearray()
+        maximum = 32768 if path.endswith("/webhook") else 4096
         async for chunk in request.stream():
             body.extend(chunk)
-            if len(body)>4096:return JSONResponse({"detail":"Evento demasiado grande."},status_code=413)
+            if len(body)>maximum:return JSONResponse({"detail":"Evento demasiado grande." if path == "/api/v1/analytics/events" else "Solicitud demasiado grande."},status_code=413)
         request._body=bytes(body)
     return await call_next(request)
 
@@ -89,6 +95,8 @@ async def activity_tracking(request, call_next):
     return response
 
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(account_avatar.router, prefix="/api/v1")
+app.include_router(donations.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
 app.include_router(admin_analytics.router, prefix="/api/v1")
 app.include_router(pets.router, prefix="/api/v1")

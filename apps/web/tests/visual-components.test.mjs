@@ -8,8 +8,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const require = createRequire(import.meta.url);
-async function compiled(name, imports = {}) {
-  const source = await readFile(new URL(`../app/ui/${name}.tsx`, import.meta.url), "utf8");
+async function compiled(name, imports = {}, sourceFile = new URL(`../app/ui/${name}.tsx`, import.meta.url)) {
+  const source = await readFile(sourceFile, "utf8");
   let { outputText } = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } });
   for (const [specifier, target] of Object.entries({ react: pathToFileURL(require.resolve("react")).href, "react/jsx-runtime": pathToFileURL(require.resolve("react/jsx-runtime")).href, ...imports })) {
     outputText = outputText.replaceAll(JSON.stringify(specifier), JSON.stringify(target));
@@ -20,7 +20,8 @@ const pictogram = await compiled("pictogram");
 const { Stepper } = await import(await compiled("stepper", { "./pictogram": pictogram }));
 const { MatchScore } = await import(await compiled("match-score"));
 const { SexSelector } = await import(await compiled("sex-selector", { "./pictogram": pictogram }));
-const { PhotoUploader } = await import(await compiled("photo-uploader", { "./pictogram": pictogram }));
+const reportPhotos = await compiled("report-photos", {}, new URL("../lib/report-photos.ts", import.meta.url));
+const { PhotoUploader } = await import(await compiled("photo-uploader", { "./pictogram": pictogram, "@/lib/report-photos": reportPhotos }));
 const html = (component, props) => renderToStaticMarkup(createElement(component, props));
 
 test("el stepper conserva las tres etapas y comunica la etapa actual", () => {
@@ -49,17 +50,18 @@ test("un score ausente o inválido no produce un porcentaje inventado", () => {
   assert.equal(html(MatchScore, { score: undefined }), "");
   assert.equal(html(MatchScore, { score: NaN }), "");
 });
-test("el formulario general conserva una foto opcional con los formatos actuales", () => {
+test("el formulario general permite cinco fotos opcionales con los formatos actuales", () => {
   const markup = html(PhotoUploader, { name: "photo" });
   assert.match(markup, /name="photo"/);
   assert.match(markup, /image\/jpeg,image\/png,image\/webp/);
   assert.match(markup, /10 MB/);
-  assert.doesNotMatch(markup, /multiple=""|required=""/);
+  assert.match(markup, /multiple=""/);
+  assert.doesNotMatch(markup, /required=""/);
 });
-test("el avistamiento vinculado conserva el control photos y permite cuatro fotos opcionales", () => {
-  const markup = html(PhotoUploader, { name: "photos", label: "Fotos", maxFiles: 4 });
+test("el avistamiento vinculado conserva el control photos y permite cinco fotos opcionales", () => {
+  const markup = html(PhotoUploader, { name: "photos", label: "Fotos", maxFiles: 5 });
   assert.match(markup, /name="photos"/);
   assert.match(markup, /multiple=""/);
-  assert.match(markup, /Hasta 4 fotos/);
+  assert.match(markup, /Hasta 5 fotos/);
   assert.doesNotMatch(markup, /required=""/);
 });

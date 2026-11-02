@@ -17,6 +17,7 @@ from sqlalchemy import and_, case, exists, func, select
 from app.admin_access import administrator
 from app.admin_period import period_filters
 from app.analysis.service import utcnow
+from app.species import SUPPORTED_SPECIES
 from app.core.config import settings
 from app.db.session import get_db
 from app.matching.linked import aware
@@ -116,7 +117,7 @@ def usage(db,from_at,to_at):
     metrics=[metric(label,db.scalar(select(func.count(func.distinct(UserActivity.user_id))).where(UserActivity.occurred_at>=start)) or 0,activity_help)
              for label,start in (("DAU",midnight),("WAU",now-timedelta(days=7)),("MAU",now-timedelta(days=30)))]
     definitions=[("Cuentas",User,[]),("Cuentas verificadas",User,[User.email_verified_at.is_not(None)]),
-        ("Mascotas creadas",Pet,[]),("Búsquedas creadas",LostCase,[]),("Búsquedas activas",LostCase,[LostCase.status=="ACTIVE"]),
+        ("Mascotas creadas",Pet,[]),("Búsquedas creadas",LostCase,[]),("Búsquedas activas",LostCase,[LostCase.status=="ACTIVE",LostCase.pet_id.in_(select(Pet.id).where(Pet.species.in_(SUPPORTED_SPECIES)))]),
         ("Búsquedas recuperadas",LostCase,[LostCase.status=="FOUND"]),("Búsquedas cerradas",LostCase,[LostCase.status.in_(["CLOSED","CANCELLED"])])]
     for label,model,extra in definitions:
         metrics.append(metric(label,count(db,model,*period_filters(model.created_at,from_at,to_at),*extra),"Registros existentes creados en el período; incluye historia previa. El estado es el actual."))
@@ -340,7 +341,7 @@ def dashboard(section:Literal["growth","usage","matching","impact","inventory"],
             select(LostCase.public_number,amount).join(model_events,model_events.case_id==LostCase.id)
             .where(*event_filters,model_events.name=="match_viewed").group_by(LostCase.public_number).order_by(amount.desc()).limit(100))]
         for item in case_views:item["public_id"]=f"MM-{item['public_id']:06d}"
-        active_geo=[LostCase.status=="ACTIVE",*period_filters(LostCase.created_at,from_at,to_at)]
+        active_geo=[LostCase.status=="ACTIVE",LostCase.pet_id.in_(select(Pet.id).where(Pet.species.in_(SUPPORTED_SPECIES))),*period_filters(LostCase.created_at,from_at,to_at)]
         cg=LostCase.analytics_geo["country"].as_string();dg=LostCase.analytics_geo["department"].as_string();lg=LostCase.analytics_geo["locality"].as_string()
         for column,value in ((cg,country),(dg,department),(lg,locality)):
             if value:active_geo.append(column==value)

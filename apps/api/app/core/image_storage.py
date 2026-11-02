@@ -94,6 +94,18 @@ def create_download_url(storage_key: str) -> str:
     )
 
 
+def store_profile_image(user_id: UUID, mime_type: str, payload: bytes) -> str:
+    clean_payload, _, _, _ = _clean_image(payload, mime_type)
+    with Image.open(BytesIO(clean_payload)) as image:
+        rgba = ImageOps.fit(image.convert("RGBA"), (512, 512), method=Image.Resampling.LANCZOS)
+        square = Image.new("RGB", rgba.size, "white")
+        square.paste(rgba, mask=rgba.getchannel("A"))
+        output = BytesIO()
+        square.save(output, format="JPEG", quality=88, optimize=True, exif=b"")
+    key, _, _ = store_private_image("user_avatar", user_id, "image/jpeg", output.getvalue())
+    return key
+
+
 def delete_private_image(storage_key: str) -> None:
     client = _client(settings.s3_endpoint)
     client.delete_object(Bucket=settings.s3_bucket, Key=storage_key)

@@ -121,7 +121,7 @@ def records(kind:Literal["users","pets","lost_cases","observations","matches","r
 def correct(kind:Literal["lost_case","observation"],identity:UUID,payload:CorrectionInput,db=Depends(get_db),user=Depends(admin)):
     target=db.get(LostCase if kind=="lost_case" else Observation,identity)
     if target is None:raise HTTPException(status_code=404,detail="Publicación no encontrada.")
-    previous=target.description;target.description=payload.description
+    previous=target.description;target.description=payload.description;target.description_format="USER_TEXT"
     db.add(AdminAudit(actor_id=user.id,action="CORRECT_DESCRIPTION",target_type=kind,target_id=identity,details={"previous_description":previous,"new_description":payload.description}))
     db.flush()
     from app.analysis.service import schedule_text

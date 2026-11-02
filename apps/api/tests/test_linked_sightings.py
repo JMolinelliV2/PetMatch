@@ -184,7 +184,7 @@ def test_photo_comparison_waits_for_all_images_and_hides_unrelated_photos(client
 def test_bad_uploads_are_rejected_and_failed_analysis_is_reported_as_unverified(client, auth_headers, db_factory, monkeypatch):
     _, case = lost_notice(client, auth_headers)
     assert submit(client, case, files=[("photos", ("x.svg", b"svg", "image/svg+xml"))]).status_code == 415
-    assert submit(client, case, files=[("photos", ("x.jpg", b"photo", "image/jpeg"))] * 5).status_code == 422
+    assert submit(client, case, files=[("photos", ("x.jpg", b"photo", "image/jpeg"))] * 6).status_code == 422
     monkeypatch.setattr(settings, "max_photo_size_bytes", 3)
     assert submit(client, case, files=[("photos", ("x.jpg", b"too-large", "image/jpeg"))]).status_code == 413
     monkeypatch.setattr(settings, "max_photo_size_bytes", 10 * 1024 * 1024)

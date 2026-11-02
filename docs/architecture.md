@@ -4,7 +4,7 @@ Guía del proyecto al 9 de octubre de 2026. Describe las tecnologías elegidas y
 
 ## La idea general
 
-La página guarda avisos de animales perdidos y reportes de la comunidad. Cuando llega un avistamiento, busca avisos compatibles por características, ubicación, fecha y, cuando hay fotos y modelos habilitados, similitud visual. El dueño recibe una posible coincidencia para revisar. La decisión sobre la identidad del animal sigue siendo humana.
+La página guarda avisos de perros y gatos perdidos y reportes de la comunidad sobre esas dos especies. Cuando llega un avistamiento, busca avisos compatibles por características, ubicación, fecha y, cuando hay fotos y modelos habilitados, similitud visual. El dueño recibe una posible coincidencia para revisar. La decisión sobre la identidad de la mascota sigue siendo humana.
 
 Hay tres partes principales:
 
@@ -21,7 +21,7 @@ flowchart TD
     API --> Cola[Redis y RQ: trabajos pendientes]
     Cola --> Worker[Worker: procesamiento en segundo plano]
     Worker --> Ollama[Ollama y Gemma: extraer características]
-    Worker --> CLIP[OpenCLIP y PyTorch: comparar fotos]
+    Worker --> CLIP[Pet-ReID y PyTorch: comparar fotos]
     Worker --> DB
     API --> Correo[Brevo por SMTP: enviar alertas]
 ```
@@ -35,7 +35,7 @@ El procesamiento de IA se habilita por configuración. La publicación de avisos
 | **React** | Construye componentes de la interfaz y actualiza su estado. | Cambiar de paso en el formulario sin perder lo escrito. |
 | **Next.js** | Organiza páginas y ejecuta tanto la web como sus rutas de servidor. Es el marco sobre el que usamos React. | `/perdi`, `/perdidos`, `/mis-avisos` y los intermediarios que envían solicitudes a la API. |
 | **TypeScript** | Agrega tipos al código JavaScript para detectar errores durante el desarrollo. | Avisar si un componente espera una fecha y recibe otro tipo de dato. |
-| **Tailwind CSS y CSS** | Definen colores, tamaños, espacios y comportamiento del diseño en distintos tamaños de pantalla. | El formulario adaptable al celular y las tarjetas de animales perdidos. |
+| **Tailwind CSS y CSS** | Definen colores, tamaños, espacios y comportamiento del diseño en distintos tamaños de pantalla. | El formulario adaptable al celular y las tarjetas de mascotas perdidas. |
 | **Node.js** | Ejecuta JavaScript del lado del servidor y las herramientas de construcción de la web. | Ejecutar el servidor de Next.js y compilar una versión para publicar. |
 | **npm** | Instala las bibliotecas de la web y ejecuta sus comandos. | `npm ci`, `npm test` y `npm run build`. |
 
@@ -96,7 +96,7 @@ Un **embedding** es esa lista de números que representa una imagen. Dos fotos p
 
 Los pesos CLIP llamados `openai` son archivos de modelo descargados para ejecución local; no usamos una API de OpenAI ni una clave de pago para esta tarea. La inferencia de Gemma y CLIP se realiza en nuestra infraestructura. Si se despliega en un servidor contratado, ese servidor sigue teniendo un costo.
 
-Los umbrales actuales son iniciales. Hay un evaluador para fotografías etiquetadas, pero todavía falta reunir suficientes ejemplos reales y calibrar el sistema. Una puntuación de compatibilidad no expresa una probabilidad comprobada de que sea el mismo animal.
+Los umbrales actuales son iniciales. Hay un evaluador para fotografías etiquetadas, pero todavía falta reunir suficientes ejemplos reales y calibrar el sistema. Una puntuación de compatibilidad no expresa una probabilidad comprobada de que sea la misma mascota.
 
 ## Ubicaciones y mapas
 
@@ -144,12 +144,12 @@ La clave SMTP sigue siendo privada en el backend, aunque Brevo sea gratuito. Las
 ## Ejemplo completo
 
 1. Una persona publica a Kobe como perdido. React muestra el formulario; Next.js envía los datos a FastAPI con la sesión protegida.
-2. FastAPI valida y guarda el animal y el aviso en PostgreSQL. Pillow limpia la foto y la guarda en el almacenamiento privado.
+2. FastAPI valida y guarda la mascota y el aviso en PostgreSQL. Pillow limpia la foto y la guarda en el almacenamiento privado.
 3. Si está habilitada la IA, Redis/RQ entrega trabajos al worker. Gemma propone características; CLIP genera un vector visual. Los resultados se guardan asociados a la evidencia vigente.
 4. Otra persona informa un avistamiento. Si entra desde la ficha de Kobe, usa el formulario breve vinculado. Si es general, el sistema busca avisos compatibles por especie, zona y fecha.
 5. PostGIS ayuda a filtrar por distancia; pgvector compara las representaciones de fotos disponibles; el código de matching combina esas señales y explica los motivos.
 6. El dueño ve una posible coincidencia en sus notificaciones. Si corresponde una alerta por correo y su dirección está confirmada, la API la envía mediante Brevo.
-7. El dueño revisa fotos y ubicación y responde si podría ser, no es o está confirmado. Puede marcar el animal como encontrado desde sus avisos.
+7. El dueño revisa fotos y ubicación y responde si podría ser, no es o está confirmado. Puede marcar la mascota como encontrada desde sus avisos.
 8. Los respaldos permiten recuperar datos y fotos; las métricas ayudan al operador a detectar fallos o demoras.
 
 ## Ubicación del código

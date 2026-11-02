@@ -32,7 +32,7 @@ def load_dataset(path):
             raise ValueError("Repeated image bytes contaminate evaluation")
         hashes.add(digest)
         split=row.get("split","test")
-        if split not in {"train","calibration","test"} or row.get("species","unknown") not in {"dog","cat","rabbit","bird","other","unknown"}:
+        if split not in {"train","calibration","test"} or row.get("species","unknown") not in {"dog","cat"}:
             raise ValueError("Invalid split or species")
         if identities.setdefault(row["identity"],split)!=split:
             raise ValueError("An identity occurs in more than one train/calibration/test split")

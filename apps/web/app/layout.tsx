@@ -7,7 +7,7 @@ import { ProductTracking } from "./product-tracking";
 
 export const metadata: Metadata = {
   title: "MascoMatch — Mascotas perdidas",
-  description: "Registrá una mascota perdida, un avistamiento o un animal encontrado.",
+  description: "Publicá perros y gatos perdidos, reportá avistamientos y encontrá posibles coincidencias.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

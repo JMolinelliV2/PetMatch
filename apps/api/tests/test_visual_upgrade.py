@@ -58,11 +58,14 @@ def embedding(db,photo,vector=None,spec=None):
     return row
 
 
-@pytest.mark.parametrize("species,provider",[("dog","pet_reid"),("cat","pet_reid"),("rabbit","open_clip"),
-    ("bird","open_clip"),("other","open_clip"),("unknown","open_clip")])
+@pytest.mark.parametrize("species,provider",[("dog","pet_reid"),("cat","pet_reid"),("rabbit",None),
+    ("bird",None),("other",None),("unknown",None)])
 def test_selection_for_every_owner(db_factory,monkeypatch,species,provider):
     monkeypatch.setattr(settings,"pet_reid_enabled",True)
     monkeypatch.setattr(settings,"openclip_enabled",True)
+    if provider is None:
+        assert select_spec(species) is None
+        return
     with db_factory() as db:
         *_,photos=records(db,species)
         assert all(spec_for_photo(db,p).provider==provider for p in photos)
@@ -108,9 +111,9 @@ def test_aggregation(values,result):
 def test_changes_invalidate_and_backfill_is_idempotent(db_factory,monkeypatch):
     monkeypatch.setattr(settings,"embeddings_enabled",True)
     with db_factory() as db:
-        pet,_,obs,photos=records(db,"unknown")
+        pet,_,obs,photos=records(db,"dog")
         old=embedding(db,photos[0]);old_id=old.analysis_job_id
-        pet.species="dog";db.flush()
+        pet.species="cat";db.flush()
         assert not is_current(db,db.get(AnalysisJob,old_id))
         assert schedule_embedding(db,photos[0]).provider=="pet_reid"
         obs.species="cat";db.commit()
@@ -123,7 +126,7 @@ def test_changes_invalidate_and_backfill_is_idempotent(db_factory,monkeypatch):
     monkeypatch.setattr(settings,"pet_reid_enabled",False)
     assert select_spec("dog")==openclip_spec()
     third=backfill(db_factory)
-    assert third["created"]==3  # New species snapshots, without deleting the historical unknown vector.
+    assert third["created"]==3  # New species snapshots, without deleting the historical dog vector.
 
 
 def test_worker_persists_provenance_and_never_repeats_success(db_factory,monkeypatch):

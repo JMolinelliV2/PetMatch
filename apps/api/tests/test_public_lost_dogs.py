@@ -34,7 +34,7 @@ def test_public_dogs_need_no_login_and_expose_only_notice_fields(client, auth_he
     assert listing.headers["cache-control"] == "no-store"
     assert listing.json()["total"] == 1
     dog = listing.json()["items"][0]
-    assert set(dog) == {"id", "public_id", "name", "species", "sex", "breed", "size", "primary_color", "description", "public_location", "lost_at", "photo_url"}
+    assert set(dog) == {"id", "public_id", "name", "species", "sex", "breed", "size", "primary_color", "description", "public_location", "lost_at", "photo_url", "publisher_name"}
     assert dog["name"] == "Luna"
     assert dog["sex"] == "unknown"
     assert dog["public_location"] == "El Pinar, Canelones, Uruguay"
@@ -66,8 +66,8 @@ def test_finished_notices_are_hidden_in_list_detail_and_photo(client, auth_heade
     assert client.get(f"/api/v1/public/lost-animals/{case['id']}/photo").status_code == 404
 
 
-@pytest.mark.parametrize("species", ["dog", "cat", "rabbit", "bird", "other", "unknown"])
-def test_all_lost_species_are_listed_and_unknown_ids_are_hidden(client, auth_headers, species):
+@pytest.mark.parametrize("species", ["dog", "cat"])
+def test_supported_lost_species_are_listed_and_unknown_ids_are_hidden(client, auth_headers, species):
     _, case = publish(client, auth_headers, species=species)
     listing = client.get("/api/v1/public/lost-animals").json()
     assert listing["total"] == 1
@@ -112,7 +112,7 @@ def test_old_notice_locality_and_edited_notice(client, auth_headers):
     assert client.get(path).status_code == 404
 
 
-@pytest.mark.parametrize("species", ["dog", "cat", "rabbit", "bird", "other", "unknown"])
+@pytest.mark.parametrize("species", ["dog", "cat"])
 def test_public_photo_selects_case_before_pet_and_keeps_storage_private(client, auth_headers, monkeypatch, species):
     from app.routers import public_lost_dogs
 
@@ -125,6 +125,7 @@ def test_public_photo_selects_case_before_pet_and_keeps_storage_private(client, 
     assert client.get(path + "/photo").content == b"clean-jpeg"
     assert used_keys[-1] == pet_photo["storage_key"]
     case_photo = add_photo(client, auth_headers, "lost_case", case["id"])
+    client.put("/api/v1/photos/cover", headers=auth_headers, json={"owner_type":"lost_case","owner_id":case["id"],"photo_id":case_photo["id"]})
     image = client.get(path + "/photo")
     assert used_keys[-1] == case_photo["storage_key"]
     assert image.headers["content-type"] == "image/jpeg"

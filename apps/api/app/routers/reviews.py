@@ -1,5 +1,7 @@
 from typing import Literal
 from uuid import UUID
+import logging
+import unicodedata
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator
@@ -10,7 +12,9 @@ from app.analysis.service import utcnow
 from app.db.session import get_db
 from app.dependencies import current_user, verified_user
 from app.models import AdminAudit, CaseReview, LostCase, Pet, User
+from app.species import SUPPORTED_SPECIES, is_supported_species, require_supported_species
 from app.admin_access import administrator
+from app.core.image_storage import load_display_image
 
 router = APIRouter(tags=["reviews"])
 RETIRED_STATUSES = {"FOUND", "CLOSED", "CANCELLED"}
@@ -44,20 +48,50 @@ def owned_review_case(db, case_id, user, *, lock=False):
     return case
 
 
-def public_review(item):
-    # Never expose account identity, email, notice, contact, photos or location.
+def anonymous_review(item):
+    name = "".join(char for char in unicodedata.normalize("NFKD", item.display_name) if not unicodedata.combining(char)).strip().casefold()
+    return name in {"", "anonimo", "anonima", "anonymous"}
+
+
+def review_avatar_version(item, user):
+    if user and item.visibility == "VISIBLE" and not anonymous_review(item) and user.avatar_storage_key:
+        return user.avatar_version
+    return None
+
+
+def public_review(item, user=None):
+    # The review ID scopes photo access without exposing account IDs or storage keys.
     return {"id": item.id, "display_name": item.display_name, "rating": item.rating,
-            "comment": item.comment, "created_at": item.created_at}
+            "comment": item.comment, "created_at": item.created_at, "avatar_version": review_avatar_version(item, user)}
+
+
+def visible_reviews():
+    return select(CaseReview, User).select_from(CaseReview).join(User, CaseReview.author_id == User.id).join(LostCase, CaseReview.lost_case_id == LostCase.id).join(Pet, LostCase.pet_id == Pet.id).where(
+        Pet.species.in_(SUPPORTED_SPECIES),
+        CaseReview.visibility == "VISIBLE", User.status == "ACTIVE", User.email_verified_at.is_not(None),
+        LostCase.status.in_(RETIRED_STATUSES), LostCase.moderation_status == "VISIBLE",
+    )
 
 
 @router.get("/public/reviews")
 def public_reviews(response: Response, limit: int = Query(default=6, ge=1, le=12), db=Depends(get_db)):
     response.headers["Cache-Control"] = "no-store"
-    query = select(CaseReview).join(User, CaseReview.author_id == User.id).join(LostCase, CaseReview.lost_case_id == LostCase.id).where(
-        CaseReview.visibility == "VISIBLE", User.status == "ACTIVE", User.email_verified_at.is_not(None),
-        LostCase.status.in_(RETIRED_STATUSES), LostCase.moderation_status == "VISIBLE",
-    ).order_by(CaseReview.created_at.desc(), CaseReview.id.desc()).limit(limit)
-    return {"items": [public_review(item) for item in db.scalars(query)]}
+    query = visible_reviews().order_by(CaseReview.created_at.desc(), CaseReview.id.desc()).limit(limit)
+    return {"items": [public_review(item, user) for item, user in db.execute(query)]}
+
+
+@router.get("/public/reviews/{review_id}/avatar")
+def public_review_avatar(review_id: UUID, db=Depends(get_db)):
+    row = db.execute(visible_reviews().where(CaseReview.id == review_id)).first()
+    if row is None or review_avatar_version(*row) is None:
+        raise HTTPException(404, "Esta reseña no tiene una foto pública disponible.")
+    _, author = row
+    try:
+        payload, mime = load_display_image(author.avatar_storage_key, "image/jpeg")
+    except Exception as exc:
+        logging.getLogger(__name__).warning("review_avatar_unavailable")
+        raise HTTPException(503, "No pudimos cargar la foto de esta reseña.") from exc
+    return Response(content=payload, media_type=mime, headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
 
 
 @router.get("/reviews/lost-cases/{case_id}")
@@ -65,13 +99,14 @@ def review_state(case_id: UUID, response: Response, db=Depends(get_db), user=Dep
     case = owned_review_case(db, case_id, user)
     item = db.scalar(select(CaseReview).where(CaseReview.lost_case_id == case.id, CaseReview.author_id == user.id))
     response.headers["Cache-Control"] = "no-store"
-    return {"eligible": case.status in RETIRED_STATUSES and case.moderation_status == "VISIBLE",
-            "email_verified": user.email_verified, "review": {**public_review(item), "visibility": item.visibility} if item else None}
+    return {"eligible": is_supported_species(case.pet.species) and case.status in RETIRED_STATUSES and case.moderation_status == "VISIBLE",
+            "email_verified": user.email_verified, "review": {**public_review(item, user), "visibility": item.visibility} if item else None}
 
 
 @router.post("/reviews/lost-cases/{case_id}", status_code=201)
 def create_review(case_id: UUID, payload: ReviewInput, response: Response, db=Depends(get_db), user=Depends(verified_user)):
     case = owned_review_case(db, case_id, user, lock=True)
+    require_supported_species(case.pet.species)
     if case.status not in RETIRED_STATUSES or case.moderation_status != "VISIBLE":
         raise HTTPException(status_code=409, detail="Podés dejar una reseña después de cerrar el aviso o recuperar a tu mascota.")
     if db.scalar(select(CaseReview.id).where(CaseReview.lost_case_id == case.id)):
@@ -85,7 +120,7 @@ def create_review(case_id: UUID, payload: ReviewInput, response: Response, db=De
         db.rollback()
         raise HTTPException(status_code=409, detail="Ya dejaste una reseña para este aviso.")
     response.headers["Cache-Control"] = "no-store"
-    return {**public_review(item), "visibility": item.visibility}
+    return {**public_review(item, user), "visibility": item.visibility}
 
 
 @router.delete("/reviews/lost-cases/{case_id}", status_code=204)

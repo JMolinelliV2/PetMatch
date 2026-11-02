@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.dependencies import current_user, verified_user
 from app.models import AnalysisJob, FeatureSet, User
+from app.species import require_supported_owner
 from app.services.access import owner_has_access
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
@@ -55,6 +56,7 @@ def get_analysis_job(job_id: UUID, db: Session = Depends(get_db), user: User = D
 @router.post("/jobs/{job_id}/retry", response_model=AnalysisJobRead, status_code=202)
 def retry_analysis_job(job_id: UUID, db: Session = Depends(get_db), user: User = Depends(verified_user)):
     job = owned_job(db, job_id, user, lock=True)
+    require_supported_owner(db, job.owner_type, job.owner_id)
     if not (settings.embeddings_enabled if job.source_type == "embedding" else settings.ai_enabled):
         raise HTTPException(status_code=409, detail="Analysis is disabled")
     if not is_current(db, job):
@@ -84,6 +86,7 @@ def start_owner_analysis(owner_type: OwnerType, owner_id: UUID, db: Session = De
         raise HTTPException(status_code=404, detail="Report not found")
     if not settings.ai_enabled:
         raise HTTPException(status_code=409, detail="Analysis is disabled")
+    require_supported_owner(db, owner_type, owner_id)
     schedule_owner(db, owner_type, owner_id)
     db.commit()
     return read_owner(db, owner_type, owner_id)

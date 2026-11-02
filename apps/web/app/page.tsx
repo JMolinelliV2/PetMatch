@@ -9,19 +9,19 @@ export default function Home() {
   return (
     <main id="main-content" className="home-page">
       <section className="home-hero" aria-labelledby="home-title">
-        <div className="hero-content">
-          <p className="eyebrow">Más miradas. Más oportunidades.</p>
-          <h1 id="home-title">Cada avistamiento<br /><span className="title-accent">puede ayudar a volver a casa.</span></h1>
-          <p className="hero-description">Compartí fotos, reportá lo que viste y revisá posibles coincidencias. Tu información puede ayudar a reunir a una mascota con su familia.</p>
-          <div className="hero-actions" aria-label="Crear un reporte">
-            <Link href="/perdi" className="button button-primary hero-primary"><Icon name="paw" />Perdí una mascota <Icon name="chevron" /></Link>
-            <Link href="/avistamiento" className="button button-secondary"><Icon name="eye" />Vi una mascota</Link>
+        <div className="home-hero-inner">
+          <div className="hero-content">
+            <h1 id="home-title">Cada avistamiento<br /><span className="title-accent">puede ayudar a que<br />vuelvan a casa.</span></h1>
+            <p className="hero-description">Compartí fotos, reportá lo que viste y revisá posibles coincidencias. Tu información puede ayudar a reunir perros y gatos con sus familias.</p>
+            <div className="hero-actions" role="group" aria-label="Crear un reporte">
+              <Link href="/perdi" className="button button-primary hero-report hero-primary"><span className="hero-action-icon"><Icon name="paw" /></span><span className="hero-action-copy"><strong>Perdí una mascota</strong><small>Publicá su aviso</small></span><span className="hero-action-end"><Icon name="arrow" /></span></Link>
+              <Link href="/avistamiento" className="button button-secondary hero-report hero-sighting"><span className="hero-action-icon"><Icon name="eye" /></span><span className="hero-action-copy"><strong>Vi una mascota</strong><small>Compartí una pista</small></span><span className="hero-action-end"><Icon name="arrow" /></span></Link>
+              <Link href="/encontre" className="button button-secondary hero-report hero-found"><span className="hero-action-icon"><Icon name="heart" /></span><span className="hero-action-copy"><strong>¿Encontraste una mascota?</strong><small>Reportá una mascota encontrada</small></span><span className="hero-action-end"><Icon name="arrow" /></span></Link>
+            </div>
           </div>
-          <Link href="/encontre" className="text-button hero-found"><Icon name="heart" />¿Encontraste una mascota? Reportá un animal encontrado <Icon name="arrow" /></Link>
-          <p className="hero-note"><Icon name="shield" />Perros, gatos y otros animales. Fotos opcionales.</p>
         </div>
         <div className="hero-photo">
-          <Image src="/images/dog-hero-generated.jpg" alt="Imagen ilustrativa de un golden retriever en un jardín" fill priority sizes="(max-width: 760px) 100vw, 50vw" />
+          <Image src="/images/dog-hero-generated.jpg" alt="Imagen ilustrativa de un golden retriever en un jardín" fill priority sizes="(max-width: 760px) 100vw, 65vw" />
         </div>
       </section>
 

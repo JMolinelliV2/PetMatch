@@ -168,8 +168,18 @@ services:
   api:
     <<: *safety
     build: {context: ./apps/api}
-    environment: *backend
-    secrets: *backend-secrets
+    environment:
+      <<: *backend
+      MP_ENABLED: ${MP_ENABLED:-false}
+      MP_ENVIRONMENT: ${MP_ENVIRONMENT:-test}
+      MP_ACCESS_TOKEN_FILE: /run/secrets/mp_access_token
+      MP_WEBHOOK_SECRET_FILE: /run/secrets/mp_webhook_secret
+      MP_COLLECTOR_ID: ${MP_COLLECTOR_ID:-}
+      MP_APPLICATION_ID: ${MP_APPLICATION_ID:-}
+      MP_PUBLIC_BASE_URL: ${MP_PUBLIC_BASE_URL:-}
+      RATE_LIMIT_DONATION: ${RATE_LIMIT_DONATION:-6}
+      RATE_LIMIT_PAYMENT_WEBHOOK: ${RATE_LIMIT_PAYMENT_WEBHOOK:-180}
+    secrets: [database_url, jwt_secret, redis_url, s3_secret_key, smtp_password, metrics_token, mp_access_token, mp_webhook_secret]
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --no-proxy-headers --no-access-log
     read_only: true
     tmpfs: ["/tmp:size=268435456,mode=1777"]
@@ -400,6 +410,8 @@ secrets:
   vision_s3_secret: {file: "${SECRETS_DIR:-./.secrets}/vision_s3_secret"}
   s3_secret_key: {file: "${SECRETS_DIR:-./.secrets}/s3_secret_key"}
   smtp_password: {file: "${SECRETS_DIR:-./.secrets}/smtp_password"}
+  mp_access_token: {file: "${SECRETS_DIR:-./.secrets}/mp_access_token"}
+  mp_webhook_secret: {file: "${SECRETS_DIR:-./.secrets}/mp_webhook_secret"}
   metrics_token: {file: "${SECRETS_DIR:-./.secrets}/metrics_token"}
   backup_key: {file: "${SECRETS_DIR:-./.secrets}/backup_key"}
   b2_key_id: {file: "${SECRETS_DIR:-./.secrets}/b2_key_id"}

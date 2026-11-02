@@ -16,6 +16,7 @@ from app.db.session import SessionLocal
 from app.matching.linked import aware
 from app.models import LostCase, Notification, Observation, User
 from app.operational_tracking import record_mail
+from app.report_text import notification_body
 
 
 def build_message(notification, owner, observation=None, related=None):
@@ -36,11 +37,11 @@ def build_message(notification, owner, observation=None, related=None):
         if observation.public_location:
             context += f"\nZona: {observation.public_location}"
     preferences_url = f"{settings.public_site_url.rstrip('/')}/mi-cuenta#notificaciones"
-    message.set_content(f"{notification.title}\n\n{notification.body}{context}\n\nRevisá el lugar y las fotos en MascoMatch:\n{settings.public_site_url.rstrip('/')}/notificaciones?aviso={notification.id}\n\nSe trata de una posible coincidencia, que necesita revisión.\nPodés cambiar tus preferencias de correo en Mi cuenta:\n{preferences_url}")
+    message.set_content(f"{notification.title}\n\n{notification_body(notification.body)}{context}\n\nRevisá el lugar y las fotos en MascoMatch:\n{settings.public_site_url.rstrip('/')}/notificaciones?aviso={notification.id}\n\nSe trata de una posible coincidencia, que necesita revisión.\nPodés cambiar tus preferencias de correo en Mi cuenta:\n{preferences_url}")
     if related and len(related)>1:
         message.replace_header("Subject", f"{len(related)} reportes nuevos: {notification.title}")
         links="\n".join(f"{settings.public_site_url.rstrip('/')}/notificaciones?aviso={item.id}" for item in related)
-        message.set_content(f"Recibimos {len(related)} avistamientos potencialmente relacionados con el mismo aviso.\n\nRevisá los lugares, fotos y motivos de cada reporte:\n{links}\n\nLa identidad de los animales necesita confirmación.\nPodés cambiar tus preferencias de correo en Mi cuenta:\n{preferences_url}")
+        message.set_content(f"Recibimos {len(related)} avistamientos potencialmente relacionados con el mismo aviso.\n\nRevisá los lugares, fotos y motivos de cada reporte:\n{links}\n\nLa identidad de las mascotas necesita confirmación.\nPodés cambiar tus preferencias de correo en Mi cuenta:\n{preferences_url}")
     return message
 
 
@@ -59,6 +60,7 @@ def send_message(message):
 
 
 def deliver_pending(session_factory=None):
+    from app.species import is_supported_species, owner_is_supported
     if settings.mail_delivery_mode == "disabled":
         return 0
     factory = session_factory or SessionLocal
@@ -82,6 +84,18 @@ def deliver_pending(session_factory=None):
             group=list(db.scalars(select(Notification).where(Notification.lost_case_id==case.id,Notification.owner_id==notification.owner_id,
                 Notification.is_active.is_(True),Notification.read_at.is_(None),Notification.archived_at.is_(None),Notification.email_status=="PENDING",Notification.email_available_at<=utcnow()).order_by(Notification.created_at,Notification.id).limit(100).with_for_update()))
             if not group:
+                continue
+            eligible = []
+            for item in group:
+                observation = db.get(Observation, item.observation_id)
+                if not is_supported_species(case.pet.species) or not observation or not owner_is_supported(db,"observation",observation.id):
+                    item.email_status = "CANCELLED"
+                    item.is_active = False
+                else:
+                    eligible.append(item)
+            group = eligible
+            if not group:
+                db.commit()
                 continue
             notification=group[0]
             if not owner or owner.status != "ACTIVE" or not case or case.status != "ACTIVE" or case.moderation_status != "VISIBLE":

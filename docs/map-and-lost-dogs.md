@@ -1,5 +1,13 @@
 # Mapa dentro del formulario y perros perdidos
 
+## Mapa de la comunidad: 1 de noviembre de 2026
+
+`/mapa` muestra únicamente las capas Perdidos y Avistamientos. Los reportes de mascotas encontradas no aparecen en los marcadores, el contador ni la lista de esta página. Se conservan los formularios, los reportes existentes y el contrato público de la API.
+
+Ambas capas usan marcadores circulares de 56 px y miniaturas con el mismo estilo. Los avisos de pérdida se identifican en rojo; los avistamientos, en azul, también en la leyenda, las tarjetas y la lista. Los avistamientos sin foto muestran un ojo sobre fondo azul. Se utiliza únicamente el endpoint público de fotos, respetando la miniatura elegida y sin exponer URLs del almacenamiento.
+
+Pasar el mouse abre la tarjeta; tocar el marcador o activarlo con el teclado la mantiene abierta. La tarjeta de avistamiento conserva la ampliación de fotos, ID, autor público, características, ubicación aproximada, fecha y hora de Uruguay, descripción y aviso relacionado. Los avistamientos en una misma ubicación se agrupan y permiten seleccionar el reporte; si coinciden con una mascota perdida, sus marcadores se separan visualmente.
+
 > Documento de una etapa anterior. Ver el [estado actual del MVP](mvp-phase-3-8.md), que incorpora comparación visual local, matching general, mapa y paneles.
 
 Entrega del 7 de octubre de 2026.
@@ -25,7 +33,7 @@ Entrega del 7 de octubre de 2026.
 
 ## Datos públicos
 
-La respuesta pública tiene una lista explícita de campos. No incluye cuenta, contacto, microchip, precisión GPS, coordenadas ni claves de almacenamiento. Las fotos se leen del bucket privado, se limpian y se sirven como JPEG de hasta 1024 px. Se prioriza la foto del aviso y, si no existe, una foto de la mascota.
+La respuesta pública tiene una lista explícita de campos. `publisher_name` contiene solo la primera palabra del nombre o apodo del autor; no publica su identificador, correo ni teléfono. En avistamientos anónimos o con la cuenta eliminada es `null` y la interfaz muestra “Publicado por Anónimo”. Tampoco se incluyen microchip, precisión GPS, coordenadas ni claves de almacenamiento. Las fotos se leen del bucket privado, se limpian y se sirven como JPEG de hasta 1024 px. La foto elegida como miniatura tiene prioridad y se conservan las fotos anteriores del aviso y la mascota.
 
 El listado, la ficha y la foto verifican que el perro tenga un aviso `ACTIVE`. Cuando cambia a `FOUND`, `CLOSED` o `CANCELLED`, o se elimina, dejan de servirlo. Las respuestas no se almacenan en caché. Los datos ya vistos o guardados por un visitante no pueden revocarse.
 
@@ -60,16 +68,16 @@ Referencias: [Leaflet](https://leafletjs.com/) y [política de teselas de OpenSt
 
 El primer paso de los tres formularios incluye Sexo, con Macho (`male`), Hembra (`female`) y No lo sé (`unknown`, valor predeterminado). Se guarda en la mascota o el avistamiento y aparece en el resumen de revisión. El listado de perros perdidos muestra el sexo conocido entre sus características; la ficha también informa si no está indicado.
 
-La migración `0004_observation_sex` agrega el dato a avistamientos y animales encontrados. Los existentes quedan como `unknown`; la mascota ya tenía el campo. La migración inicial mantiene el esquema original de avistamientos para que una base nueva pueda aplicar toda la secuencia. No se agregan variables de entorno ni llamadas de IA.
+La migración `0004_observation_sex` agrega el dato a avistamientos y mascotas encontradas. Los existentes quedan como `unknown`; la mascota ya tenía el campo. La migración inicial mantiene el esquema original de avistamientos para que una base nueva pueda aplicar toda la secuencia. No se agregan variables de entorno ni llamadas de IA.
 
 Archivos: modelos, esquemas, migraciones, ruta pública, formulario compartido, ficha y etiquetas públicas, README y pruebas de sexo/migraciones/listado. Para aplicar: `docker compose restart api web`.
 
 Comprobado: **72 pruebas de API aprobadas y 1 integración opcional omitida**, tanto en Windows como en el contenedor; **13 pruebas de frontend**, TypeScript y compilación de producción correctos. PostgreSQL está en `0004_observation_sex (head)`. En el navegador se verificaron las opciones del formulario y la selección Macho, y el aviso anterior de Kobe muestra Sexo: No indicado.
 
-## Actualización: Animales perdidos
+## Actualización: Mascotas perdidas
 
-La sección pasa a llamarse **Animales perdidos** en navegación, portada, títulos, botones, estados del listado y fichas. Incluye avisos activos de todas las especies registradas: perros, gatos, conejos, aves y otros animales. Cada tarjeta y ficha informa la especie con una etiqueta en español.
+La sección pasa a llamarse **Mascotas perdidas** en navegación, portada, títulos, botones, estados del listado y fichas. Actualmente incluye únicamente avisos activos de perros y gatos; los registros históricos de otras especies se conservan en forma privada. Cada tarjeta y ficha informa la especie con una etiqueta en español.
 
 La ruta pública principal es `/api/v1/public/lost-animals`. `/api/v1/public/lost-dogs` se conserva como alias para enlaces y clientes anteriores. La página mantiene `/perdidos`, las fotos privadas y la protección de los datos del dueño. No requiere nueva migración ni variables de entorno.
 
-Comprobado: **83 pruebas de API aprobadas y 1 integración opcional omitida** en Windows y Docker; **14 pruebas de frontend**, TypeScript y compilación correctos. El navegador muestra Animales perdidos y los avisos existentes de Pepe (gato) y Kobe (perro).
+Comprobado: **83 pruebas de API aprobadas y 1 integración opcional omitida** en Windows y Docker; **14 pruebas de frontend**, TypeScript y compilación correctos. El navegador muestra Mascotas perdidas y los avisos existentes de Pepe (gato) y Kobe (perro).

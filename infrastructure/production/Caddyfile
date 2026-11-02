@@ -2,7 +2,7 @@
     servers {
         timeouts {
             read_header 10s
-            read_body 30s
+            read_body 120s
             idle 120s
         }
     }
@@ -11,7 +11,7 @@
 {$SITE_DOMAIN} {
     encode zstd gzip
     request_body {
-        max_size 45MB
+        max_size 55MB
     }
     header {
         -Server

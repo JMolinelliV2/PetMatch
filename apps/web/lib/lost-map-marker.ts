@@ -43,7 +43,7 @@ export function addLostMapMarker(
     count.className = "home-map-pin-count"; count.textContent = String(points.length);
     iconContent.append(count);
   }
-  const title = points.length > 1 ? `${points.length} animales perdidos en esta zona. Ver miniaturas.` : `${point.title}. Ver miniatura y aviso.`;
+  const title = points.length > 1 ? `${points.length} mascotas reportadas en esta zona. Ver miniaturas.` : `${point.title}. Ver miniatura y aviso.`;
   const content = document.createElement("div");
   const popup = L.popup({ minWidth: 200, maxWidth: 260, maxHeight: 340, className: "home-case-popup", autoPan: false, autoPanPadding: [20, 20] }).setContent(content);
   const marker = L.marker([point.latitude, point.longitude], {
@@ -65,6 +65,9 @@ export function addLostMapMarker(
   }
   function updateLayout() {
     if (disposed || !popup.isOpen()) return;
+    popup.options.maxWidth = Math.max(160, Math.min(260, map.getContainer().clientWidth - 64));
+    popup.options.minWidth = Math.min(200, popup.options.maxWidth);
+    popup.options.maxHeight = Math.max(120, Math.min(340, map.getContainer().clientHeight - 80));
     popup.update();
     if (popup.options.autoPan) return;
     // Keep hover previews inside the map without moving the marker out from under the pointer.
@@ -131,12 +134,14 @@ export function addLostMapMarker(
   element.addEventListener("pointerenter", hover);
   element.addEventListener("pointerleave", scheduleClose);
   element.addEventListener("keydown", keyboard);
+  map.on("resize", updateLayout);
   function dispose() {
     if (disposed) return;
     disposed = true; cancelClose(); detachPopup();
     element.removeEventListener("pointerenter", hover);
     element.removeEventListener("pointerleave", scheduleClose);
     element.removeEventListener("keydown", keyboard);
+    map.off("resize", updateLayout);
     if (photo) { photo.onload = null; photo.onerror = null; }
     marker.closePopup(); marker.off();
   }

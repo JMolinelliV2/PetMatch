@@ -1,6 +1,6 @@
 # Avistamientos en el mapa público
 
-El mapa y su lista muestran fotos de los propios reportes de avistamientos y animales encontrados, cuando existen. Sin foto muestran un icono y **Sin foto**; si falla la carga, **Foto no disponible**. Nunca sustituyen una foto faltante con la del aviso perdido relacionado.
+El mapa y su lista muestran fotos de los propios reportes de avistamientos y mascotas encontradas, cuando existen. Sin foto muestran un icono y **Sin foto**; si falla la carga, **Foto no disponible**. Nunca sustituyen una foto faltante con la del aviso perdido relacionado.
 
 ## Información visible
 
@@ -8,11 +8,11 @@ La lista incluye especie, sexo, tamaño y color cuando fueron informados, zona a
 
 Las miniaturas tienen un botón independiente para ampliar la foto dentro de la página. La imagen de los detalles abre directamente esa ventana, con galería cuando existen varias fotos. El cierre regresa a la tarjeta del mapa; ver `photo-viewer.md` para los controles y permisos.
 
-Los puntos abren una tarjeta con foto, características, zona, fecha y hora, y descripción completa. Un avistamiento enviado desde un aviso puede enlazar a esa publicación si sigue activa y visible. La tarjeta aclara que ese vínculo no confirma la identidad del animal; no expone scores ni decisiones privadas de coincidencias.
+Los puntos abren una tarjeta con foto, características, zona, fecha y hora, y descripción completa. Un avistamiento enviado desde un aviso puede enlazar a esa publicación si sigue activa y visible. La tarjeta aclara que ese vínculo no confirma la identidad de la mascota; no expone scores ni decisiones privadas de coincidencias.
 
 Los avistamientos y encontrados que comparten coordenadas públicas se agrupan con un contador y un selector. Abrirlos desde la lista selecciona el reporte concreto. El círculo mide 24 px y su área de interacción 44 px; admite clic, toque, Enter y Espacio. Escape cierra los detalles y devuelve el foco al punto. Un grupo mixto muestra coral y verde.
 
-Si la zona coincide con un aviso perdido, el círculo de avistamientos se dibuja a su lado con un desplazamiento visual de 40 px. Las coordenadas siguen siendo las mismas y aproximadas; esto permite seleccionar ambos tipos de reporte. Los círculos con foto de animales perdidos, sus miniaturas y enlaces conservan el circuito existente.
+Si la zona coincide con un aviso perdido, el círculo de avistamientos se dibuja a su lado con un desplazamiento visual de 40 px. Las coordenadas siguen siendo las mismas y aproximadas; esto permite seleccionar ambos tipos de reporte. Los círculos con foto de mascotas perdidas, sus miniaturas y enlaces conservan el circuito existente.
 
 ## API y fotos
 

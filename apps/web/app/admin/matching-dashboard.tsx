@@ -22,7 +22,7 @@ const labels: Record<Outcome, string> = { positive: "Confirmadas", false: "Falsa
 const outcomeClasses: Record<Outcome, string> = { positive: "admin-outcome-positive", false: "admin-outcome-false", uncertain: "admin-outcome-uncertain", pending: "admin-outcome-pending" };
 const feedbackLabels: Record<string, string> = { RESOLVED: "Es mi mascota", FALSE_MATCH: "No es mi mascota", CONFIRMED_RELEVANT: "Podría ser; todavía no está seguro" };
 const sourceLabels = { GENERAL: "Búsqueda general", LINKED: "Desde un aviso" };
-const caseLabels: Record<string, string> = { ACTIVE: "Búsqueda activa", FOUND: "Animal encontrado", CLOSED: "Aviso cerrado", CANCELLED: "Aviso cancelado" };
+const caseLabels: Record<string, string> = { ACTIVE: "Búsqueda activa", FOUND: "Mascota encontrada", CLOSED: "Aviso cerrado", CANCELLED: "Aviso cancelado" };
 const number = (value: number) => new Intl.NumberFormat("es-UY").format(value);
 const percentage = (value: number | null) => value === null ? "—" : `${new Intl.NumberFormat("es-UY", { maximumFractionDigits: 1 }).format(value)}%`;
 const date = (value: string) => new Intl.DateTimeFormat("es-UY", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Montevideo" }).format(new Date(value));

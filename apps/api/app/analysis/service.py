@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.analysis.prompts import TEXT_PROMPT_VERSION, VISION_PROMPT_VERSION
 from app.core.config import settings
 from app.models import AnalysisJob, Embedding, FeatureSet, LostCase, Match, Notification, Observation, Pet, Photo
+from app.species import owner_is_supported
 
 
 def utcnow() -> datetime:
@@ -20,6 +21,8 @@ def input_hash(snapshot: dict) -> str:
 
 
 def text_snapshot(db: Session, owner_type: str, owner_id: UUID) -> dict | None:
+    if not owner_is_supported(db, owner_type, owner_id):
+        return None
     if owner_type == "observation":
         observation = db.get(Observation, owner_id)
         if observation is None:
@@ -50,6 +53,8 @@ def photo_snapshot(photo: Photo) -> dict:
 
 
 def is_current(db: Session, job: AnalysisJob) -> bool:
+    if not owner_is_supported(db, job.owner_type, job.owner_id):
+        return False
     if job.source_type == "embedding":
         from app.embeddings.service import is_current_embedding
         return is_current_embedding(db,job)
@@ -88,7 +93,9 @@ def image_snapshot(db,photo):
             "preprocessing":preprocessing_id(),"crop_version":crop_version()}
 
 
-def _schedule(db: Session, owner_type: str, owner_id: UUID, source: str, snapshot: dict, photo_id: UUID | None = None, *, priority=None) -> AnalysisJob:
+def _schedule(db: Session, owner_type: str, owner_id: UUID, source: str, snapshot: dict, photo_id: UUID | None = None, *, priority=None) -> AnalysisJob | None:
+    if not owner_is_supported(db, owner_type, owner_id):
+        return None
     model = settings.ai_vision_model if source == "image" else settings.ai_text_model
     version = VISION_PROMPT_VERSION if source == "image" else TEXT_PROMPT_VERSION
     digest = input_hash(snapshot)
@@ -128,6 +135,8 @@ def schedule_text(db: Session, owner_type: str, owner_id: UUID, *, priority=None
 
 
 def schedule_photo(db: Session, photo: Photo) -> AnalysisJob | None:
+    if not owner_is_supported(db, photo.owner_type, photo.owner_id):
+        return None
     from app.embeddings.service import schedule_embedding
     schedule_embedding(db, photo)
     if not settings.ai_enabled:
@@ -136,6 +145,8 @@ def schedule_photo(db: Session, photo: Photo) -> AnalysisJob | None:
 
 
 def schedule_owner(db: Session, owner_type: str, owner_id: UUID) -> None:
+    if not owner_is_supported(db, owner_type, owner_id):
+        return
     schedule_text(db, owner_type, owner_id)
     if settings.ai_enabled or settings.embeddings_enabled:
         for photo in db.scalars(select(Photo).where(Photo.owner_type == owner_type, Photo.owner_id == owner_id)):
@@ -143,6 +154,8 @@ def schedule_owner(db: Session, owner_type: str, owner_id: UUID) -> None:
 
 
 def purge_owner(db: Session, owner_type: str, owner_id: UUID) -> None:
+    from app.models import PhotoCover
+    db.execute(delete(PhotoCover).where(PhotoCover.owner_type == owner_type, PhotoCover.owner_id == owner_id))
     if owner_type == "lost_case":
         db.execute(delete(Notification).where(Notification.lost_case_id == owner_id))
         db.execute(delete(Match).where(Match.lost_case_id == owner_id))

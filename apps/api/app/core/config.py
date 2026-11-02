@@ -66,6 +66,15 @@ class Settings(BaseSettings):
     smtp_from: str = "MascoMatch <avisos@mascomatch.local>"
     smtp_tls_mode: Literal["none", "starttls", "ssl"] = "starttls"
     public_site_url: str = "http://localhost:3000"
+    mp_enabled: bool = False
+    mp_environment: Literal["test", "production"] = "test"
+    mp_access_token: SecretStr = SecretStr("")
+    mp_webhook_secret: SecretStr = SecretStr("")
+    mp_access_token_file: str | None = None
+    mp_webhook_secret_file: str | None = None
+    mp_collector_id: str = Field(default="", max_length=64)
+    mp_application_id: str = Field(default="", max_length=64)
+    mp_public_base_url: str = Field(default="", max_length=512)
     photo_reminder_delay_minutes: int = Field(default=30, ge=1, le=1440)
     embeddings_enabled: bool = False
     embedding_model: Literal["ViT-B-32"] = "ViT-B-32"
@@ -103,6 +112,8 @@ class Settings(BaseSettings):
     rate_limit_contact: int = Field(default=5, ge=1, le=100)
     rate_limit_contact_daily: int = Field(default=50, ge=1, le=10000)
     rate_limit_publish: int = Field(default=60,ge=1,le=10000)
+    rate_limit_donation: int = Field(default=6, ge=1, le=60)
+    rate_limit_payment_webhook: int = Field(default=180, ge=30, le=1000)
     rate_limit_read: int = Field(default=300,ge=1,le=10000)
     rate_limit_backend: Literal["memory", "redis"] = "memory"
     trusted_proxy_ips: str = ""
@@ -115,7 +126,7 @@ class Settings(BaseSettings):
     @classmethod
     def secret_files(cls, values):
         values = dict(values)
-        for name in ("database_url", "jwt_secret", "s3_secret_key", "smtp_password", "redis_url", "backup_key", "metrics_token"):
+        for name in ("database_url", "jwt_secret", "s3_secret_key", "smtp_password", "redis_url", "backup_key", "metrics_token", "mp_access_token", "mp_webhook_secret"):
             filename = values.get(f"{name}_file")
             if not filename:
                 continue
@@ -130,6 +141,36 @@ class Settings(BaseSettings):
             except (OSError, UnicodeError) as exc:
                 raise ValueError(f"Cannot read {name.upper()} secret file") from exc
         return values
+
+    @model_validator(mode="after")
+    def payment_configuration(self):
+        if not self.mp_enabled:
+            return self
+        if len(self.mp_access_token.get_secret_value()) < 20 or len(self.mp_webhook_secret.get_secret_value()) < 20:
+            raise ValueError("Mercado Pago requires private access and webhook credentials")
+        if not self.mp_collector_id.isdigit() or not self.mp_application_id.isdigit():
+            raise ValueError("Configure the Mercado Pago collector and application IDs")
+        target = urlsplit(self.mp_public_base_url)
+        target.port  # Validate an explicitly configured port before enabling payments.
+        if (target.scheme != "https" or not target.hostname or target.hostname in {"localhost", "127.0.0.1", "::1"}
+                or target.username or target.password or target.query or target.fragment or target.path not in {"", "/"}):
+            raise ValueError("Mercado Pago requires a public HTTPS origin for callbacks")
+        return self
+
+    @property
+    def mp_configured(self) -> bool:
+        if (len(self.mp_access_token.get_secret_value()) < 20 or len(self.mp_webhook_secret.get_secret_value()) < 20
+                or not self.mp_collector_id.isdigit() or not self.mp_application_id.isdigit()):
+            return False
+        try:
+            target = urlsplit(self.mp_public_base_url)
+            target.port
+        except ValueError:
+            return False
+        return (target.scheme == "https" and bool(target.hostname)
+            and target.hostname not in {"localhost", "127.0.0.1", "::1"}
+            and not target.username and not target.password and not target.query and not target.fragment
+            and target.path in {"", "/"})
 
     @model_validator(mode="after")
     def production_configuration(self):

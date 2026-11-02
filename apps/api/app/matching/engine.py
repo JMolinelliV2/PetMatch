@@ -12,6 +12,7 @@ from app.matching.linked import aware, distance_meters
 from app.matching.scoring import WEIGHTS, known, feature_similarity, combine, cosine, aggregate_visual_similarity, notification_evidence
 from app.matching.tracking import record_recommendation
 from app.models import AnalysisJob, Embedding, FeatureSet, LostCase, Match, Notification, Observation, Pet, Photo, User
+from app.species import SUPPORTED_SPECIES, is_supported_species, owner_is_supported
 
 PENDING = {"PENDING", "DISPATCHING", "QUEUED", "RUNNING"}
 
@@ -23,6 +24,7 @@ def should_wait(job):
 
 
 def request_matching(db, owner_type, owner_id):
+    supported = owner_is_supported(db, owner_type, owner_id)
     if owner_type == "observation":
         scope = Observation.id == owner_id
         affected = Match.observation_id == owner_id
@@ -30,7 +32,8 @@ def request_matching(db, owner_type, owner_id):
         # Candidate retrieval will restrict each comparison by species, area and date.
         scope = True
         affected = Match.lost_case_id == owner_id if owner_type == "lost_case" else Match.lost_case_id.in_(select(LostCase.id).where(LostCase.pet_id == owner_id))
-    db.execute(update(Observation).where(scope, Observation.linked_case_id.is_(None)).values(matching_status="PENDING", matching_checked_at=None))
+    if supported:
+        db.execute(update(Observation).where(scope, Observation.species.in_(SUPPORTED_SPECIES), Observation.linked_case_id.is_(None)).values(matching_status="PENDING", matching_checked_at=None))
     general_affected = and_(affected, Match.observation_id.in_(select(Observation.id).where(Observation.linked_case_id.is_(None))))
     db.execute(update(Match).where(general_affected).values(is_active=False))
     db.execute(update(Notification).where(Notification.match_id.in_(select(Match.id).where(general_affected))).values(is_active=False))
@@ -56,17 +59,20 @@ def evidence(db, owner_type, owner_id, declared):
             for key in WEIGHTS:
                 attribute = result.features.get(key, {})
                 if known(attribute.get("value")) and attribute.get("confidence", 0) >= settings.linked_feature_confidence:
-                    if key=="species" and job.source_type=="image" and known(traits.get("species")) and traits["species"]!=attribute["value"] and attribute.get("confidence",0)>=.9:
+                    if key=="species" and (attribute["value"]=="unsupported" or (
+                        job.source_type=="image" and known(traits.get("species")) and
+                        traits["species"]!=attribute["value"] and attribute.get("confidence",0)>=.9)):
                         traits["_species_conflict"]=True
                     traits.setdefault(key, attribute["value"])
     return traits, pending
 
 
 def candidates(db, observation):
+    if not is_supported_species(observation.species):
+        return
     query = select(LostCase, Pet).join(Pet).join(User,Pet.owner_id==User.id).where(LostCase.status == "ACTIVE",LostCase.moderation_status=="VISIBLE",User.status=="ACTIVE", LostCase.lost_at <= observation.observed_at,
         LostCase.latitude.is_not(None), LostCase.longitude.is_not(None))
-    if observation.species != "unknown":
-        query = query.where(or_(Pet.species == observation.species, Pet.species == "unknown"))
+    query = query.where(Pet.species.in_(SUPPORTED_SPECIES), Pet.species == observation.species)
     radius = settings.matching_max_radius_meters + 2000
     lat_delta = radius / 111000
     lon_delta = min(180, lat_delta / max(.01, math.cos(math.radians(observation.latitude))))
@@ -136,7 +142,7 @@ def evaluate_observation(db, identity):
     for match in prior.values():
         match.is_active = False
     db.execute(update(Notification).where(Notification.match_id.in_([item.id for item in prior.values()])).values(is_active=False))
-    if observation.moderation_status!="VISIBLE":
+    if not is_supported_species(observation.species) or observation.moderation_status!="VISIBLE":
         observation.matching_status="INACTIVE"
         return
     if observation.latitude is None or observation.longitude is None or aware(observation.observed_at) > utcnow() + timedelta(minutes=1):

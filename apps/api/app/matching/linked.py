@@ -129,7 +129,7 @@ def set_result(db, observation, case, pet, status, reasons, score=None, evidence
         has_photo = db.scalar(select(Photo.id).where(Photo.owner_type == "observation", Photo.owner_id == observation.id).limit(1)) is not None
         body = "Una persona envió un avistamiento desde tu aviso. " + ("Las fotos necesitan revisión por una persona. La identidad está por confirmar." if has_photo else "No adjuntó fotos; la identidad está por confirmar.")
     else:
-        body = "Las características de la foto son compatibles con tu aviso, junto con la ubicación y la fecha. Podría tratarse de tu animal; revisá el avistamiento."
+        body = "Las características de la foto son compatibles con tu aviso, junto con la ubicación y la fecha. Podría tratarse de tu mascota; revisá el avistamiento."
     if notification is None:
         notification = Notification(owner_id=pet.owner_id, lost_case_id=case.id, observation_id=observation.id, match_id=match.id if match else None, kind=kind, title=title, body=body, email_available_at=utcnow()+timedelta(seconds=settings.mail_group_seconds))
         db.add(notification)
@@ -149,6 +149,9 @@ def evaluate_sighting(db: Session, observation_id: UUID) -> str:
     if case is None or observation is None:
         return "INACTIVE"
     pet = db.get(Pet, case.pet_id)
+    from app.species import is_supported_species
+    if not pet or not is_supported_species(pet.species) or not is_supported_species(observation.species):
+        return set_result(db, observation, case, pet, "INACTIVE", ["MascoMatch admite únicamente perros y gatos"])
     if case.status != "ACTIVE" or case.moderation_status!="VISIBLE" or observation.moderation_status!="VISIBLE":
         return set_result(db, observation, case, pet, "INACTIVE", ["El aviso ya no está activo"])
     if aware(observation.observed_at) < aware(case.lost_at) or aware(observation.observed_at) > utcnow() + timedelta(minutes=1):
@@ -211,11 +214,17 @@ def related_ids(db, owner_type, owner_id):
 
 
 def mark_related_pending(db, owner_type, owner_id):
+    from app.species import owner_is_supported, SUPPORTED_SPECIES
     from app.matching.engine import request_matching
     request_matching(db, owner_type, owner_id)
     identities = related_ids(db, owner_type, owner_id)
+    if not owner_is_supported(db, owner_type, owner_id):
+        db.execute(update(Observation).where(Observation.id.in_(identities)).values(matching_status="INACTIVE"))
+        db.execute(update(Match).where(Match.observation_id.in_(identities)).values(is_active=False))
+        db.execute(update(Notification).where(Notification.observation_id.in_(identities)).values(is_active=False))
+        return
     if identities:
-        linked_identities = select(Observation.id).where(Observation.id.in_(identities), Observation.linked_case_id.is_not(None))
+        linked_identities = select(Observation.id).where(Observation.id.in_(identities), Observation.species.in_(SUPPORTED_SPECIES), Observation.linked_case_id.is_not(None))
         db.execute(update(Observation).where(Observation.id.in_(linked_identities)).values(matching_status="PENDING"))
         db.execute(update(Match).where(Match.observation_id.in_(linked_identities)).values(explanation=["La comparación está en curso; el avistamiento sigue disponible para revisión"]))
         db.execute(update(Notification).where(Notification.observation_id.in_(linked_identities)).values(kind="REPORTED_SIGHTING",title="Avistamiento reportado · comparación en curso",body=PENDING_REPORT_BODY))

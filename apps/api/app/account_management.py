@@ -34,6 +34,8 @@ def lock_account(db, user, token):
 
 def delete_account(db, user):
     # User -> pet -> case locks prevent concurrent account uploads or new owned records.
+    if user.avatar_storage_key:
+        db.add(PhotoDeletion(storage_key=user.avatar_storage_key, available_at=utcnow()))
     pets = list(db.scalars(select(Pet).where(Pet.owner_id == user.id).order_by(Pet.id).with_for_update()))
     pet_ids = [pet.id for pet in pets]
     cases = list(db.scalars(select(LostCase).where(LostCase.pet_id.in_(pet_ids)).order_by(LostCase.id).with_for_update(key_share=True)))

@@ -10,7 +10,7 @@ Revisión de procedencia y contrato de inferencia: 15 de octubre de 2026. Los pe
 - SHA-256: `8691f5f6d0cebbd1602d21def63a34f7a58f78e08b3d4914cb81adcc2efd83f8`.
 - Licencia declarada del checkpoint: Apache-2.0. Backbone DINOv2 base congelado, Apache-2.0; proyección entrenada a 512 dimensiones.
 - Finalidad: señal de identidad individual para perros y gatos. No es una probabilidad ni una identificación concluyente.
-- Contrato: RGB, resize directo 224×224, float32 NCHW; media ImageNet `[.485,.456,.406]`, desviación `[.229,.224,.225]`; salida `[N,512]`, normalización L2 comprobada. Se aplica un recorte previo del animal cuando es confiable.
+- Contrato: RGB, resize directo 224×224, float32 NCHW; media ImageNet `[.485,.456,.406]`, desviación `[.229,.224,.225]`; salida `[N,512]`, normalización L2 comprobada. Se aplica un recorte previo de la mascota cuando es confiable.
 - Runtime: ONNX Runtime 1.31.0 (MIT), NumPy y Pillow. Ejecución CPU local, sin descargar pesos durante peticiones.
 
 La [ficha fijada](https://huggingface.co/open-noodle/pet-recognition-base/blob/fa30eb7785ceb764d5c2840c4585fb89821be385/README.md) declara entrenamiento de la proyección únicamente con Dogs-World (CC0) y Cat Individual Images (CC BY); DogFaceNet se utilizó solo para evaluación. Metadatos originales: [Dogs-World](https://www.kaggle.com/datasets/lextoumbourou/dogs-world) y [Cat Individual Images, Tzu-Yuan Lin](https://www.kaggle.com/datasets/timost1234/cat-individuals), CC BY 4.0. El autor declara uso comercial permitido. Se verificaron las declaraciones publicadas; no se realizó una auditoría de titularidad de cada fotografía del dataset.
@@ -37,7 +37,7 @@ MascoMatch implementa su propio adaptador del contrato ONNX. No incorpora el có
 - SHA-256: `e6d1bd7789aa45192b3bf90570a789b478bae1b74ebcce7eddd908e83a2b7c31`.
 - [OpenCLIP](https://github.com/mlfoundations/open_clip) y [CLIP](https://github.com/openai/CLIP): MIT. Conversión timm: Apache-2.0 declarada en su ficha.
 - Dependencias: open_clip_torch 3.2.0, PyTorch 2.13.0 CPU, Torchvision 0.28.0 CPU; versiones transitivas fijadas en `requirements-vision.lock`.
-- Uso: otras especies/desconocido, o fallback explícito al deshabilitar Pet-ReID. RGB orientado por EXIF, resize/center crop 224 de OpenCLIP, QuickGELU y normalización propia del modelo; vector L2.
+- Uso: alternativa explícita para perros y gatos al deshabilitar Pet-ReID. No habilita otras especies. RGB orientado por EXIF, resize/center crop 224 de OpenCLIP, QuickGELU y normalización propia del modelo; vector L2.
 - El dataset de entrenamiento original de CLIP no se distribuye con MascoMatch; las licencias de código/pesos no equivalen a una auditoría de derechos de sus imágenes originales.
 
 ## Gemma 3 4B
@@ -58,4 +58,4 @@ Los manifiestos y este documento conservan avisos de procedencia. Para redistrib
 
 ## Fotos de comprobación técnica
 
-Las descargas opcionales del smoke usan dos fotos CC0: [Hamoma30, A lovely dog sitting on floor](https://commons.wikimedia.org/wiki/File:A_lovely_dog_sitting_on_floor.jpg) y [Kryesmin, Bangladeshi Cat](https://commons.wikimedia.org/wiki/File:Bangladeshi_Cat.jpg). Se guardan en almacenamiento temporal/ignorado. Repetir una foto solo comprueba el circuito técnico: no mide eficacia de identidad. Las rutas rabbit/unknown usan una fixture para comprobar selección de proveedor, no exactitud sobre conejos.
+Las descargas opcionales del smoke usan dos fotos CC0: [Hamoma30, A lovely dog sitting on floor](https://commons.wikimedia.org/wiki/File:A_lovely_dog_sitting_on_floor.jpg) y [Kryesmin, Bangladeshi Cat](https://commons.wikimedia.org/wiki/File:Bangladeshi_Cat.jpg). Se guardan en almacenamiento temporal/ignorado. Repetir una foto solo comprueba el circuito técnico: no mide eficacia de identidad. El smoke actual utiliza únicamente perros y gatos; los escenarios históricos de otras especies ya no representan rutas de publicación admitidas.

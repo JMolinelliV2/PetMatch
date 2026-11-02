@@ -1,5 +1,6 @@
 services:
   db:
+    restart: unless-stopped
     build:
       context: ./infrastructure/docker/postgres
     environment:
@@ -18,6 +19,7 @@ services:
       retries: 15
 
   redis:
+    restart: unless-stopped
     image: redis:7-alpine
     ports:
       - "6379:6379"
@@ -28,6 +30,7 @@ services:
       retries: 10
 
   minio:
+    restart: unless-stopped
     build:
       context: ./infrastructure/docker/minio
     command: server /data --console-address ":9001"
@@ -41,6 +44,7 @@ services:
       - minio_data:/data
 
   api:
+    restart: unless-stopped
     build:
       context: ./apps/api
     working_dir: /app
@@ -83,6 +87,15 @@ services:
       SMTP_FROM: ${SMTP_FROM:-MascoMatch <avisos@mascomatch.local>}
       SMTP_TLS_MODE: ${SMTP_TLS_MODE:-starttls}
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-http://localhost:3000}
+      MP_ENABLED: ${MP_ENABLED:-false}
+      MP_ENVIRONMENT: ${MP_ENVIRONMENT:-test}
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
+      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
+      MP_COLLECTOR_ID: ${MP_COLLECTOR_ID:-}
+      MP_APPLICATION_ID: ${MP_APPLICATION_ID:-}
+      MP_PUBLIC_BASE_URL: ${MP_PUBLIC_BASE_URL:-}
+      RATE_LIMIT_DONATION: ${RATE_LIMIT_DONATION:-6}
+      RATE_LIMIT_PAYMENT_WEBHOOK: ${RATE_LIMIT_PAYMENT_WEBHOOK:-180}
       PHOTO_REMINDER_DELAY_MINUTES: ${PHOTO_REMINDER_DELAY_MINUTES:-30}
       EMBEDDINGS_ENABLED: ${EMBEDDINGS_ENABLED:-false}
       EMBEDDING_CACHE_DIR: /models/clip
@@ -166,6 +179,9 @@ services:
     environment:
       <<: *backend_environment
       ANALYSIS_WORKER_KIND: visual
+      MP_ENABLED: "false"
+      MP_ACCESS_TOKEN: ""
+      MP_WEBHOOK_SECRET: ""
     volumes:
       - ./apps/api:/app
       - vision_models:/models
@@ -188,6 +204,9 @@ services:
     environment:
       <<: *backend_environment
       ANALYSIS_WORKER_KIND: semantic
+      MP_ENABLED: "false"
+      MP_ACCESS_TOKEN: ""
+      MP_WEBHOOK_SECRET: ""
       EMBEDDING_CPU_THREADS: "1"
     volumes:
       - ./apps/api:/app
@@ -199,6 +218,7 @@ services:
       ollama: {condition: service_started}
 
   web:
+    restart: unless-stopped
     image: node:22-alpine
     working_dir: /app
     command: sh -c "npm install && npm run dev -- --hostname 0.0.0.0 --webpack"

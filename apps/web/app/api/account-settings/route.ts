@@ -7,9 +7,10 @@ async function forward(request: NextRequest) {
     const action = request.nextUrl.searchParams.get("action");
     const method = request.method;
     const path = method === "PATCH" && !action ? "contact" : method === "DELETE" && !action ? "me"
+      : method === "POST" && action === "password" ? "change-password"
       : method === "POST" && (action === "resend" || action === "cancel") ? `contact/email/${action}` : null;
     if (!path) return NextResponse.json({ detail: "Solicitud no permitida." }, { status: 403 });
-    const body = method === "POST" ? undefined : Buffer.from(await boundedBody(request, 8192));
+    const body = method === "POST" && action !== "password" ? undefined : Buffer.from(await boundedBody(request, 8192));
     const response = await fetch(`${serverApi}/auth/${path}`, {
       method, headers: { ...authorization(request), "Content-Type": "application/json" }, body,
       cache: "no-store", signal: AbortSignal.timeout(30000),

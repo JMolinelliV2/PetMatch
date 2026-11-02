@@ -12,7 +12,10 @@ from app.core.image_storage import load_analysis_image
 from app.db.session import get_db
 from app.dependencies import current_user
 from app.models import LostCase, Match, Notification, Observation, Pet, Photo, User
+from app.photo_albums import album_order
+from app.species import SUPPORTED_SPECIES
 from app.schemas import NotificationList, NotificationRead
+from app.report_text import notification_body
 from app.routers.photo_gallery import gallery_photo_response
 from app.matching.visibility import presentation
 
@@ -21,6 +24,7 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 def private_notifications(user):
     return select(Notification, LostCase, Pet, Observation).join(LostCase, Notification.lost_case_id == LostCase.id).join(Pet, LostCase.pet_id == Pet.id).join(Observation, Notification.observation_id == Observation.id).where(
+        Pet.species.in_(SUPPORTED_SPECIES), Observation.species.in_(SUPPORTED_SPECIES),
         Notification.owner_id == user.id, Pet.owner_id == user.id, Notification.is_active.is_(True), LostCase.status == "ACTIVE",
         LostCase.moderation_status=="VISIBLE",Observation.moderation_status=="VISIBLE",
     )
@@ -37,10 +41,10 @@ def serialize(db, row):
     notification, case, pet, observation = row
     match = db.get(Match, notification.match_id) if notification.match_id else None
     author=db.get(User,observation.author_id) if observation.share_contact and observation.author_id else None
-    photos = list(db.scalars(select(Photo.id).where(Photo.owner_type == "observation", Photo.owner_id == observation.id).order_by(Photo.created_at, Photo.id)))
+    photos = list(db.scalars(select(Photo.id).where(Photo.owner_type == "observation", Photo.owner_id == observation.id).order_by(*album_order("observation",observation.id))))
     return NotificationRead(
         presentation=presentation(match,pet.owner,1,"NOTIFICATION") if match and match.recommended_at else None,
-        id=notification.id, kind=notification.kind, title=notification.title, body=notification.body,
+        id=notification.id, kind=notification.kind, title=notification.title, body=notification_body(notification.body),
         read_at=notification.read_at, created_at=aware(notification.created_at), lost_case_id=case.id,
         lost_case_public_id=case.public_id, observation_public_id=observation.public_id,
         archived_at=notification.archived_at,

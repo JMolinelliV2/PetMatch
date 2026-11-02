@@ -3,6 +3,7 @@ from dataclasses import asdict, dataclass
 import hashlib
 import json
 from app.core.config import settings
+from app.species import is_supported_species
 
 PET_REVISION = "fa30eb7785ceb764d5c2840c4585fb89821be385"
 CLIP_REVISION = "a6f597a30f7b82c51704746581f9a4e41421e878"
@@ -43,23 +44,16 @@ def pet_reid_spec():
 
 
 def select_spec(species):
+    if not is_supported_species(species):
+        return None
     if settings.pet_reid_enabled and species in {"dog", "cat"}:
         return pet_reid_spec()
     return openclip_spec() if settings.openclip_enabled else None
 
 
 def photo_species(db, photo):
-    from app.models import Pet, LostCase, Observation
-    if photo.owner_type == "pet":
-        owner = db.get(Pet, photo.owner_id)
-    elif photo.owner_type == "lost_case":
-        case = db.get(LostCase, photo.owner_id)
-        owner = case.pet if case else None
-    elif photo.owner_type == "observation":
-        owner = db.get(Observation, photo.owner_id)
-    else:
-        owner = None
-    return owner.species if owner else None
+    from app.species import owner_species
+    return owner_species(db, photo.owner_type, photo.owner_id)
 
 
 def spec_for_photo(db, photo):

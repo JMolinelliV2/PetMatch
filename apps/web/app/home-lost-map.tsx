@@ -41,7 +41,7 @@ export function HomeLostMap() {
       observer = new ResizeObserver(() => instance.invalidateSize({ pan: false }));
       observer.observe(container.current);
       setReady(true);
-    }).catch(() => { if (!disposed) setMapError("No pudimos abrir el mapa. Podés consultar los animales perdidos en el catálogo."); });
+    }).catch(() => { if (!disposed) setMapError("No pudimos abrir el mapa. Podés consultar las mascotas reportadas en el catálogo."); });
     return () => { disposed = true; observer?.disconnect(); map.current?.remove(); map.current = null; group.current = null; tiles.current = null; };
   }, [mapRefresh]);
 
@@ -51,10 +51,10 @@ export function HomeLostMap() {
     window.addEventListener("focus", reload); window.addEventListener("mascomatch:cases", reload);
     setBusy(true);
     void fetch(`${API}/public/map?days=0&layer=lost`, { cache: "no-store", signal: controller.signal }).then(async response => {
-      if (!response.ok) throw new Error("No pudimos cargar los animales en el mapa.");
+      if (!response.ok) throw new Error("No pudimos cargar las mascotas en el mapa.");
       const data: { points: Point[] } = await response.json();
       if (!controller.signal.aborted) { setPoints(data.points.filter(point => point.layer === "lost")); setError(""); }
-    }).catch(cause => { if (!controller.signal.aborted) { setPoints([]); setError(cause instanceof Error ? cause.message : "No pudimos cargar los animales en el mapa."); } })
+    }).catch(cause => { if (!controller.signal.aborted) { setPoints([]); setError(cause instanceof Error ? cause.message : "No pudimos cargar las mascotas en el mapa."); } })
       .finally(() => { if (!controller.signal.aborted) setBusy(false); });
     return () => { controller.abort(); window.removeEventListener("focus", reload); window.removeEventListener("mascomatch:cases", reload); };
   }, [refresh]);
@@ -87,9 +87,9 @@ export function HomeLostMap() {
   }
 
   return <section id="mapa-perdidos" className="home-lost-map" aria-labelledby="home-lost-map-title">
-    <div className="home-lost-map-heading"><div><h3 id="home-lost-map-title"><Icon name="pin" />Animales perdidos en el mapa</h3><p>Pasá el mouse sobre una foto o tocala para ver la miniatura y abrir el aviso.</p></div><Link href="/mapa" className="text-button">Abrir mapa completo <Icon name="arrow" /></Link></div>
-    <p className="home-map-status" role="status">{busy || !ready && !mapError ? "Cargando mapa…" : error ? "Los avisos del mapa no están disponibles en este momento." : points.length ? `${points.length} ${points.length === 1 ? "animal perdido con ubicación" : "animales perdidos con ubicación"}` : "No hay avisos activos con ubicación por ahora."}</p>
-    <div ref={container} className="home-lost-map-canvas" role="region" aria-label="Mapa de animales perdidos" aria-describedby="home-lost-map-help" />
+    <div className="home-lost-map-heading"><div><h3 id="home-lost-map-title"><Icon name="pin" />Mascotas reportadas en el mapa</h3><p>Pasá el mouse sobre una foto o tocala para ver la miniatura y abrir el aviso.</p></div><Link href="/mapa" className="text-button">Abrir mapa completo <Icon name="arrow" /></Link></div>
+    <p className="home-map-status" role="status">{busy || !ready && !mapError ? "Cargando mapa…" : error ? "Los avisos del mapa no están disponibles en este momento." : points.length ? `${points.length} ${points.length === 1 ? "mascota reportada con ubicación" : "mascotas reportadas con ubicación"}` : "No hay avisos activos con ubicación por ahora."}</p>
+    <div ref={container} className="home-lost-map-canvas" role="region" aria-label="Mapa de mascotas reportadas" aria-describedby="home-lost-map-help" />
     {selection && createPortal(<LostLocationPreview key={selection.points[0].id} selection={selection} origin="inicio" onRefresh={() => setRefresh(value => value + 1)} />, selection.content)}
     <p className="field-help" id="home-lost-map-help">Los puntos muestran zonas aproximadas. Los avisos sin ubicación se pueden consultar en el catálogo.</p>
     {error && <p className="notice notice-warning" role="alert">{error} <button type="button" className="text-button" onClick={() => setRefresh(value => value + 1)}>Reintentar</button></p>}

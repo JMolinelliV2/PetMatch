@@ -1,12 +1,14 @@
 # Preparación para producción
 
-Actualizado el 22 de octubre de 2026. Este archivo describe un despliegue Docker en un servidor Linux. No publica automáticamente el dominio ni contrata servicios.
+Actualizado el 1 de noviembre de 2026. Este archivo describe un despliegue Docker en un servidor Linux. No publica automáticamente el dominio ni contrata servicios.
+
+Para una instalación nueva, seguir el [procedimiento detallado paso a paso](puesta-en-produccion-paso-a-paso.md), que distingue PowerShell, terminal del VPS y paneles de los proveedores, e incluye comprobaciones y tareas operativas pendientes.
 
 ## Lanzamiento del producto y medición propia — 21 de octubre
 
 El despliegue utiliza el producto completo: registro, búsqueda, reportes, Pet-ReID/OpenCLIP/Gemma locales, alertas y recuperación. No se publican listas de espera ni demostraciones simuladas. Los modelos no se descargan durante solicitudes públicas. Las métricas y sus límites están definidos en [analytics](analytics.md).
 
-Antes de actualizar una base existente, detener API/workers, generar y verificar un respaldo y ejecutar `alembic upgrade head` con la imagen nueva. La revisión actual es `0026_analytics_rollup`; conserva íntegramente las tablas operativas, features, vectores e historial. La cadena incluye una revisión histórica ya aplicada que se conserva por compatibilidad; no habilita rutas ni un modo de acceso distinto.
+Antes de actualizar una base existente, detener API/workers, generar y verificar un respaldo y ejecutar `alembic upgrade head` con la imagen nueva. La revisión actual es `0031_donations`; agrega el registro de aportes puntuales y su cola de confirmación, conserva las tablas operativas, features, vectores e historial, limita nuevas publicaciones a perros/gatos y retira del procesamiento los registros de otras especies. Ver [alcance y migración](dog-cat-scope.md), [fotos y miniaturas](report-photos.md), [descripciones originales](report-descriptions.md) y [foto de perfil](account-avatar.md) y [Mercado Pago](mercado-pago-configuracion.md). La cadena incluye una revisión histórica ya aplicada que se conserva por compatibilidad; no habilita rutas ni un modo de acceso distinto.
 
 El procedimiento de despliegue completo sigue siendo `python3 tools/production_apply.py deploy --with-ai`. La primera instalación de Gemma requiere la aceptación explícita de sus términos por el responsable; una instalación existente puede verificarse sin volver a descargarla. No se contrataron servidores ni se aceptaron términos en nombre del responsable durante este cambio.
 
@@ -48,7 +50,7 @@ Objetivo probado: Linux x86_64 / Ubuntu 24.04, Docker Compose 2.24.4 o superior.
 
 Todos los servicios de producción, modelos, fotos, colas y base de datos quedan en el VPS. La PC personal no almacena ni ejecuta componentes necesarios para atender usuarios.
 
-En un servidor limpio, ingresar mediante SSH y obtener **la revisión aprobada** del repositorio. Esta entrega permanece sin commit/push hasta revisión; no desplegar el `main` anterior pensando que incluye estos cambios.
+En un servidor limpio, ingresar mediante SSH y obtener **la revisión aprobada** del repositorio. La revisión `86f0db3` de `main` incluye la integración B2; se puede utilizar esa revisión o una posterior que haya sido revisada. Las claves y los datos locales no se transfieren al clonar el código.
 
 ```sh
 sudo apt-get update

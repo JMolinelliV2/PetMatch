@@ -1,6 +1,12 @@
 # Gestión de cuenta
 
-`/mi-cuenta` permite editar nombre, teléfono opcional y correo, y configurar las notificaciones. El acceso Mi cuenta del encabezado lleva a esta página; Mis avisos conserva sus publicaciones, edición, coincidencias y cierre.
+`/mi-cuenta` permite editar nombre, teléfono opcional y correo, cambiar la contraseña y configurar las notificaciones. El acceso Mi cuenta del encabezado lleva a esta página; Mis avisos conserva sus publicaciones, edición, coincidencias y cierre.
+
+## Cambio de contraseña
+
+La sección **Cambiar contraseña** pide la contraseña actual, una nueva de entre 12 y 128 caracteres y su confirmación. Ambas nuevas contraseñas deben coincidir y ser diferentes de la actual. El formulario muestra errores sin perder los datos y, al guardar, vacía los campos y abre el modal de confirmación utilizado en Mi cuenta.
+
+`POST /api/account-settings?action=password` envía únicamente la solicitud permitida a `POST /auth/change-password`, con cookie HttpOnly, control de origen y cuerpo limitado. La API exige una sesión activa, bloquea la cuenta y verifica la contraseña actual con el límite de intentos existente. Guarda el hash, revoca todas las demás sesiones e invalida los enlaces pendientes de recuperación, conservando la sesión que hizo el cambio. El inicio de sesión toma el mismo bloqueo para impedir que un ingreso concurrente con la contraseña anterior sobreviva al cambio. No confirma el correo ni modifica el contacto, las preferencias o el estado de verificación. No requiere migraciones ni un servicio de correo disponible.
 
 ## Notificaciones
 
@@ -31,3 +37,5 @@ El navegador utiliza un proxy con cookie HttpOnly, validación del origen, rutas
 ## Revisión de esta entrega
 
 Se revisan tipos y sintaxis, el inicio de los servicios y las páginas en lectura. No se eliminan cuentas reales, cambian contactos, envían solicitudes de correo ni publican reportes para revisar esta implementación. No se ejecutan pruebas automatizadas en esta entrega.
+
+El cambio de contraseña se comprobó con cuentas temporales dentro de una transacción descartada: contraseña actual incorrecta, confirmación distinta, reutilización de la anterior, límites de longitud, sesiones vencidas o ajenas, nueva clave válida, cierre de las demás sesiones y cancelación de la recuperación anterior. Se verificó el ingreso con la nueva contraseña y el rechazo de la anterior, sin modificar la verificación de correo. El proxy rechazó solicitudes sin sesión, desde otro origen y con un cuerpo excesivo. La revisión visual utilizó el componente real en una vista temporal de desarrollo, retirada al terminar, en escritorio y celulares de 320 y 390 px.

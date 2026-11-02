@@ -79,8 +79,11 @@ class RateLimitMiddleware:
         path=scope["path"];headers=dict(scope.get("headers",[]));actor=client_address(scope)
         group="auth" if path.startswith("/api/v1/auth/") and scope["method"]=="POST" else "read" if scope["method"] in {"GET","HEAD"} else "publish"
         if path=="/api/v1/auth/register" and scope["method"]=="POST":group="register"
+        if path.rstrip("/")=="/api/v1/auth/avatar" and scope["method"]=="POST":group="publish"
         if path.rstrip("/")=="/api/v1/contact" and scope["method"]=="POST":group="contact"
         if path.rstrip("/")=="/api/v1/analytics/events" and scope["method"]=="POST":group="analytics"
+        if path.rstrip("/")=="/api/v1/payments/checkout" and scope["method"]=="POST":group="donation"
+        if path.rstrip("/")=="/api/v1/payments/mercadopago/webhook" and scope["method"]=="POST":group="payment_webhook"
         seconds=3600 if group in {"register", "contact"} else 60
         authorization=headers.get(b"authorization",b"").decode("utf-8",errors="ignore")
         if group not in {"auth","register","contact"} and authorization.startswith("Bearer "):

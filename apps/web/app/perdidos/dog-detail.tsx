@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { dogTraits, lostDate, lostDogsEndpoint, sexLabel, speciesLabel } from "@/lib/lost-dogs";
 import type { LostDogNotice } from "@/lib/lost-dogs";
-import { DogPhoto } from "./dog-photo";
+import { ReportPhotoAlbum } from "../ui/report-photo-album";
 import { ReportPublication } from "../report-publication";
 import { ReportId } from "../ui/report-id";
+import { PublicationAuthor } from "../ui/publication-author";
+import { PublicationEditLink } from "../ui/publication-edit-link";
 
-export function DogDetail({ id, fromMap = false, fromHomeMap = false }: { id: string; fromMap?: boolean; fromHomeMap?: boolean }) {
+export function DogDetail({ id }: { id: string }) {
   const [dog, setDog] = useState<LostDogNotice | null>(null);
   const [error, setError] = useState("");
   const [missing, setMissing] = useState(false);
@@ -32,16 +34,16 @@ export function DogDetail({ id, fromMap = false, fromHomeMap = false }: { id: st
   }, [id, refresh]);
 
   return <main id="main-content" className="page dog-detail-page">
-    <Link href={fromHomeMap ? "/#mapa-perdidos" : fromMap ? "/mapa" : "/perdidos"} className="back-link"><span aria-hidden="true">←</span> {fromHomeMap ? "Volver al mapa del inicio" : fromMap ? "Volver al mapa" : "Volver a animales perdidos"}</Link>
-    {missing ? <><h1>Este aviso ya no está disponible</h1><p className="page-intro">Puede que el animal haya sido encontrado o que su dueño haya cerrado el aviso.</p></>
+    {missing ? <><h1>Este aviso ya no está disponible</h1><p className="page-intro">Puede que la mascota haya sido encontrada o que su dueño haya cerrado el aviso.</p></>
       : error ? <div className="notice notice-warning" role="alert">{error} <button type="button" className="text-button" onClick={() => setRefresh(value => value + 1)}>Reintentar</button></div>
       : !dog ? <p role="status" className="page-intro">Cargando aviso…</p>
       : <article className="dog-detail">
-        <DogPhoto key={dog.id} dog={dog} />
+        <ReportPhotoAlbum key={dog.id} src={dog.photo_url ? `${lostDogsEndpoint}/${encodeURIComponent(dog.id)}/photo` : null} galleryEndpoint={`${lostDogsEndpoint}/${encodeURIComponent(dog.id)}/photos`} alt={`Foto de ${dog.name}`} />
         <div className="dog-detail-info">
-          <span className="lost-status">Sigue perdido</span>
+          <div className="dog-detail-status"><span className="lost-status">Sigue perdido</span><PublicationEditLink id={dog.id} kind="lost_case" /></div>
           <h1>{dog.name}</h1>
           <ReportId id={dog.id} publicId={dog.public_id} copyable />
+          <PublicationAuthor name={dog.publisher_name} />
           <p className="dog-traits">{[speciesLabel(dog.species), ...dogTraits(dog)].join(" · ")}</p>
           <dl className="review-details">
             <div><dt>Sexo</dt><dd>{sexLabel(dog.sex)}</dd></div>
@@ -49,7 +51,7 @@ export function DogDetail({ id, fromMap = false, fromHomeMap = false }: { id: st
             <div><dt>Perdido desde el</dt><dd><time dateTime={dog.lost_at}>{lostDate(dog.lost_at)}</time></dd></div>
           </dl>
           <h2>Descripción</h2><p className="dog-full-description">{dog.description || "Sin descripción adicional."}</p>
-          <div className="dog-help"><h2>¿Lo viste?</h2><p>Compartí el lugar y fotos si tenés. El avistamiento quedará vinculado a este aviso.</p><Link href={`/avistamiento?aviso=${dog.id}`} className="button button-primary">Publicar un avistamiento</Link></div>
+          <div className="dog-help"><h2>¿La viste?</h2><p>Compartí el lugar y fotos si tenés. El avistamiento quedará vinculado a este aviso.</p><Link href={`/avistamiento?aviso=${dog.id}`} className="button button-primary">Publicar un avistamiento</Link></div>
           <ReportPublication id={dog.id}/>
         </div>
       </article>}

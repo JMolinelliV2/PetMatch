@@ -2,6 +2,8 @@
 
 16 de octubre de 2026. Revisión previa a commit/push. Referencia anterior preservada: `b047666025bf26451cf3a3a6e47deeb0036c9eef`, etiqueta `previo-al-cambio-de-modelo-de-ia`.
 
+> Informe histórico de la entrega original. Desde el 31 de octubre de 2026 solo se admiten perros y gatos; las rutas de otras especies descritas aquí ya no están vigentes. Ver [alcance actual y migración](dog-cat-scope.md).
+
 ## 1. IMPLEMENTED
 
 - Proveedores locales separados: Pet-ReID para perros/gatos; OpenCLIP para otras especies/desconocido y fallback explícito. Gemma 3 4B se mantiene para atributos.

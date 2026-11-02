@@ -5,7 +5,7 @@ import {VerifyEmailNotice} from "./verify-email-notice";
 import {useSessionRefresh} from "./use-session-refresh";
 import {AccountLoading} from "./ui/account-loading";
 import type {FormEvent,ReactNode} from "react";
-export type SessionUser={id:string;name:string;email?:string;phone?:string|null;pending_email?:string|null;notification_preferences?:{email?:boolean};role?:string;admin_access?:boolean;email_verified?:boolean;email_verification_required?:boolean};
+export type SessionUser={id:string;name:string;avatar_version?:string|null;email?:string;phone?:string|null;pending_email?:string|null;notification_preferences?:{email?:boolean};role?:string;admin_access?:boolean;email_verified?:boolean;email_verification_required?:boolean};
 export function AccountSession({children,showAccountHeader=true}:{children:(user:SessionUser,actions:{logout:()=>Promise<void>})=>ReactNode;showAccountHeader?:boolean}) {
   const sessionVersion=useSessionRefresh();
   const [user,setUser]=useState<SessionUser|null>(null);

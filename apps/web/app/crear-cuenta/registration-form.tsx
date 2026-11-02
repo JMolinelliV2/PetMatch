@@ -84,14 +84,14 @@ export function RegistrationForm() {
     <h2>Tu cuenta está creada</h2>
     <p role="status">{user.email_verified ? "Ya podés publicar desde tu cuenta." : "Ahora confirmá tu correo para empezar a publicar. Recibirás un mensaje con el enlace."}</p>
     {user.email_verification_required && !user.email_verified && <VerifyEmailNotice email={user.email} />}
-    <div className="location-actions"><Link href={user.email_verified ? "/mi-cuenta" : "/confirmar-correo"} className="button button-primary">{user.email_verified ? "Ir a mi cuenta" : "Confirmar mi correo"}</Link><Link href="/perdidos" className="text-button">Ver animales perdidos</Link></div>
+    <div className="location-actions"><Link href={user.email_verified ? "/mi-cuenta" : "/confirmar-correo"} className="button button-primary">{user.email_verified ? "Ir a mi cuenta" : "Confirmar mi correo"}</Link><Link href="/perdidos" className="text-button">Ver mascotas reportadas</Link></div>
     <button type="button" className="text-button" disabled={busy} onClick={() => void logout()}>{busy ? "Cerrando sesión…" : "Cerrar sesión"}</button>
     {error && <p role="alert" className="notice notice-warning">{error}</p>}
   </section>;
 
   return <form className="notification-login account-form" onSubmit={register} aria-busy={busy} onFocusCapture={()=>{if(!started.current){started.current=true;void track({name:"registration_started",page:"REGISTER"});}}}>
     <fieldset className="section-fields" disabled={busy}>
-      <label className="field-label">Nombre o apodo<input className="form-input" name="name" required minLength={1} maxLength={120} autoComplete="nickname" /></label>
+      <label className="field-label">Nombre o apodo<input className="form-input" name="name" required minLength={1} maxLength={120} autoComplete="nickname" /><span className="field-help">En tus publicaciones mostramos solo la primera palabra de este nombre o apodo.</span></label>
       <label className="field-label">Correo electrónico<input className="form-input" name="email" type="email" required maxLength={320} autoComplete="email" /><span className="field-help">Para recibir alertas y recuperar el acceso a tu cuenta.</span></label>
       <label className="field-label">Contraseña<input className="form-input" name="password" type="password" required minLength={12} maxLength={128} autoComplete="new-password" /><span className="field-help">Usá al menos 12 caracteres.</span></label>
       <label className="field-label">Repetí la contraseña<input className="form-input" name="confirmPassword" type="password" required minLength={12} maxLength={128} autoComplete="new-password" /></label>

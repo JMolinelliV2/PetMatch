@@ -158,6 +158,7 @@ def create_backup(directory):
                 db.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
                 snapshot = db.execute("SELECT pg_export_snapshot()").fetchone()[0]
                 rows = db.execute("SELECT storage_key,mime_type FROM photos ORDER BY id").fetchall()
+                rows += db.execute("SELECT avatar_storage_key,'image/jpeg' FROM users WHERE avatar_storage_key IS NOT NULL ORDER BY id").fetchall()
                 run_pg(["pg_dump", "--format=custom", "--no-owner", "--no-acl", "--snapshot="+snapshot, "--file="+str(dump)], pg_environment(settings.database_url, workspace))
             manifest["database_sha256"] = file_hash(dump)
             with temporary.open("xb") as stream:

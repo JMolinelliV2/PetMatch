@@ -3,14 +3,53 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, Numeric, String, Text, Uuid, UniqueConstraint, func, insert
 from pgvector.sqlalchemy import Vector
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.db.base import Base
+from app.species import is_supported_species, SCOPE_MESSAGE
 
 
 class TimestampMixin:
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+class Donation(TimestampMixin, Base):
+    """Anonymous one-time contributions; never store payer or card information."""
+    __tablename__ = "donations"
+    __table_args__ = (CheckConstraint("amount_uyu >= 1 AND amount_uyu <= 9007199254740991", name="ck_donation_amount"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    request_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), unique=True, nullable=False)
+    browser_key_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    amount_uyu: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    environment: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), default="CREATING", nullable=False, index=True)
+    collector_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    application_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    public_base_url: Mapped[str] = mapped_column(String(512), nullable=False)
+    provider_order_id: Mapped[str | None] = mapped_column(String(64), unique=True)
+    checkout_url: Mapped[str | None] = mapped_column(String(2048))
+    provider_status: Mapped[str | None] = mapped_column(String(64))
+    provider_status_detail: Mapped[str | None] = mapped_column(String(80))
+    provider_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(String(64))
+
+
+class DonationSync(Base):
+    """Durable, deduplicated resource lookup queue; no webhook bodies or signatures."""
+    __tablename__ = "donation_sync"
+    __table_args__ = (UniqueConstraint("environment", "provider_order_id", name="uq_donation_sync_resource"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    environment: Mapped[str] = mapped_column(String(16), nullable=False)
+    provider_order_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    pending: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(String(64))
 
 
 class PublicationNumber(Base):
@@ -45,6 +84,8 @@ class User(TimestampMixin, Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str | None] = mapped_column(String(32))
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    avatar_storage_key: Mapped[str | None] = mapped_column(String(512))
+    avatar_version: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
     notification_preferences: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     status: Mapped[str] = mapped_column(String(24), default="ACTIVE", nullable=False)
     role: Mapped[str] = mapped_column(String(24), default="USER", server_default="USER", nullable=False)
@@ -127,6 +168,12 @@ class AccountToken(Base):
 class Pet(TimestampMixin, Base):
     __tablename__ = "pets"
 
+    @validates("species")
+    def validate_species(self, key, value):
+        if not is_supported_species(value):
+            raise ValueError(SCOPE_MESSAGE)
+        return value
+
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     owner_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), index=True, nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
@@ -161,6 +208,7 @@ class LostCase(PublicationIdentityMixin, TimestampMixin, Base):
     longitude: Mapped[float | None] = mapped_column(Float)
     location_accuracy_meters: Mapped[int | None] = mapped_column(Integer)
     description: Mapped[str] = mapped_column(String(4000), default="", nullable=False)
+    description_format: Mapped[str] = mapped_column(String(16), default="USER_TEXT", server_default="USER_TEXT", nullable=False)
     public_location: Mapped[str | None] = mapped_column(String(350))
     analytics_geo: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}", nullable=False)
     search_radius_meters: Mapped[int] = mapped_column(Integer, default=15000, nullable=False)
@@ -189,6 +237,12 @@ class PhotoDeletion(Base):
 class Observation(PublicationIdentityMixin, TimestampMixin, Base):
     __tablename__ = "observations"
 
+    @validates("species")
+    def validate_species(self, key, value):
+        if not is_supported_species(value):
+            raise ValueError(SCOPE_MESSAGE)
+        return value
+
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     author_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True)
     species: Mapped[str] = mapped_column(String(40), index=True, nullable=False)
@@ -196,6 +250,7 @@ class Observation(PublicationIdentityMixin, TimestampMixin, Base):
     primary_color: Mapped[str] = mapped_column(String(40), default="unknown", server_default="unknown", nullable=False)
     size: Mapped[str] = mapped_column(String(24), default="unknown", server_default="unknown", nullable=False)
     description: Mapped[str] = mapped_column(String(4000), nullable=False)
+    description_format: Mapped[str] = mapped_column(String(16), default="USER_TEXT", server_default="USER_TEXT", nullable=False)
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     latitude: Mapped[float | None] = mapped_column(Float)
     longitude: Mapped[float | None] = mapped_column(Float)
@@ -246,6 +301,14 @@ class Photo(TimestampMixin, Base):
     mime_type: Mapped[str] = mapped_column(String(120), nullable=False)
     width: Mapped[int | None] = mapped_column(Integer)
     height: Mapped[int | None] = mapped_column(Integer)
+
+
+class PhotoCover(Base):
+    __tablename__ = "photo_covers"
+
+    owner_type: Mapped[str] = mapped_column(String(24), primary_key=True)
+    owner_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    photo_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("photos.id", ondelete="CASCADE"), index=True, nullable=False)
 
 
 class AnalysisJob(TimestampMixin, Base):

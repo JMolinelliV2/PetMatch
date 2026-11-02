@@ -1,13 +1,15 @@
+import type { SupportedSpecies } from "./species";
+
 export type LostDogNotice = {
-  id: string; public_id?: string; name: string; species: "dog" | "cat" | "rabbit" | "bird" | "other" | "unknown"; sex: string; breed: string; size: string;
+  id: string; public_id?: string; name: string; species: SupportedSpecies; sex: string; breed: string; size: string;
   primary_color: string; description: string; public_location: string | null;
-  lost_at: string; photo_url: string | null;
+  lost_at: string; photo_url: string | null; publisher_name?: string | null;
 };
 export type LostDogList = { items: LostDogNotice[]; total: number; limit: number; offset: number };
 export const lostDogsEndpoint = `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"}/public/lost-animals`;
 
-export function speciesLabel(species: LostDogNotice["species"]): string {
-  return { dog: "Perro", cat: "Gato", rabbit: "Conejo", bird: "Ave", other: "Otro animal", unknown: "Animal" }[species];
+export function speciesLabel(species: string): string {
+  return species === "dog" ? "Perro" : species === "cat" ? "Gato" : "Especie fuera del alcance actual";
 }
 
 export function sexLabel(sex: string): string {

@@ -292,7 +292,7 @@ export function LocationPicker({ value, onChange, required = false, lost = false
         <button type="button" onClick={locate} disabled={locating || nearbyLoading} className="button button-secondary">
           {locating ? "Buscando ubicación…" : "Usar mi ubicación actual"}
         </button>
-        <p className="field-help">{lost ? "Usala si estás en el lugar donde se perdió." : "Usala si estás donde viste o encontraste al animal."}</p>
+        <p className="field-help">{lost ? "Usala si estás en el lugar donde se perdió." : "Usala si estás donde viste o encontraste a la mascota."}</p>
       </div>
 
       <div aria-live="polite">

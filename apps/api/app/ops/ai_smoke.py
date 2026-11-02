@@ -82,7 +82,7 @@ def run(directory):
         with factory() as db:
             user=User(email="smoke-owner@example.test",name="Synthetic",password_hash="not-a-login",email_verified_at=utcnow())
             db.add(user);db.flush()
-            for species in ("dog","cat","rabbit","unknown"):
+            for species in ("dog","cat"):
                 pet=Pet(owner_id=user.id,name="Synthetic",species=species,primary_color="brown",size="medium")
                 db.add(pet);db.flush()
                 case=LostCase(pet_id=pet.id,lost_at=utcnow(),latitude=-34.9,longitude=-56.1)
@@ -109,12 +109,10 @@ def run(directory):
             for species,case_id,obs_id in ids:
                 vectors=list(db.scalars(select(Embedding).join(AnalysisJob).where(AnalysisJob.owner_id==obs_id)))
                 assert len(vectors)==1 and vectors[0].dimension==512
-                assert vectors[0].provider==("pet_reid" if species in {"dog","cat"} else "open_clip")
+                assert vectors[0].provider=="pet_reid"
                 assert abs(cosine(vectors[0].vector,vectors[0].vector)-1)<1e-5
                 evaluate_observation(db,obs_id)
-                # Unknown routing is checked, but missing species must not create an identity assertion.
-                if species!="unknown":
-                    assert db.scalar(select(Match).where(Match.observation_id==obs_id)) is not None
+                assert db.scalar(select(Match).where(Match.observation_id==obs_id)) is not None
                 report["checks"][species]=True
             db.commit()
             report["checks"]["notification_outbox"]=db.scalar(select(Notification.id).limit(1)) is not None

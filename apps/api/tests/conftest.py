@@ -62,6 +62,7 @@ def client(db_factory, monkeypatch):
     monkeypatch.setattr("app.contact_mail.delivery_loop", idle_worker)
     monkeypatch.setattr("app.operational_tracking.cleanup_loop", idle_worker)
     monkeypatch.setattr("app.product_analytics.cleanup_loop", idle_worker)
+    monkeypatch.setattr("app.payments.reconciliation_loop", idle_worker)
 
     def override_get_db():
         db = db_factory()

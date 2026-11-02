@@ -9,6 +9,7 @@ from app.admin_period import period_filters
 from app.admin_charts import chart_data
 from app.ops.backup_status import read_status
 from app.analysis.service import utcnow
+from app.species import owner_is_supported
 from app.db.session import get_db
 from app.models import (AccountToken, AdminAudit, AnalysisJob, ContactMessage, EmailDeliveryLog,
     LostCase, Notification, Observation, OperationalTracking, Pet, PhotoReminder, User, UserActivity)
@@ -209,6 +210,7 @@ def records(section: SECTION, response: Response, from_at: AwareDatetime | None 
         for row in db.execute(select(entries).where(*filters).order_by(entries.c.created_at.desc(), entries.c.id).offset(offset).limit(limit)):
             item = dict(row._mapping)
             item["public_id"] = f"MM-{item.pop('public_number'):06d}"
+            item["in_scope"] = owner_is_supported(db,item["kind"],item["id"])
             items.append(item)
     else:
         filters = period_filters(AdminAudit.created_at, from_at, to_at)

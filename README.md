@@ -74,7 +74,9 @@ Las rutas de escritura, las fotos, los análisis y los datos privados de mascota
 
 ## IA local: Pet-ReID, OpenCLIP y Gemma
 
-Perros y gatos usan Pet-ReID 512D con detector local; otras especies y desconocido usan OpenCLIP 512D. Gemma 3 4B extrae atributos. El matching combina señales compatibles, características, ubicación y fecha. No usa APIs pagas de IA.
+MascoMatch admite únicamente perros y gatos, que usan Pet-ReID 512D con detector local. OpenCLIP 512D queda como alternativa explícita para esas mismas especies si se deshabilita Pet-ReID. Gemma 3 4B extrae atributos. El matching combina señales compatibles, características, ubicación y fecha. No usa APIs pagas de IA.
+
+Ver [alcance de perros/gatos y tratamiento de registros históricos](docs/dog-cat-scope.md).
 
 [Arquitectura y operación](docs/ai-production.md) · [Licencias y revisiones](docs/third-party-models.md) · [Informe de entrega y mediciones](docs/ai-delivery-report.md) · [Despliegue](docs/production.md).
 
@@ -196,7 +198,7 @@ Copiar `.env.example` a `.env` antes de ejecutar Compose. Cambiar contraseñas y
 
 **Ver en mapa** despliega un mapa de 300 px dentro del mismo formulario. Permite arrastrar el pin, tocar otro punto o mover el pin con las flechas del teclado. El punto nuevo se guarda inmediatamente y se consulta su dirección; si esa consulta falla, conserva el punto elegido sin usar la dirección ni la precisión GPS anterior. El mapa usa Leaflet 1.9.4 y las teselas HTTPS de OpenStreetMap, sin clave de API. Referencias: [Leaflet](https://leafletjs.com/) y [política de teselas](https://operations.osmfoundation.org/policies/tiles/).
 
-La portada presenta una fotografía y tres acciones: mascota perdida, avistamiento y animal encontrado. Los formularios se completan en tres etapas: **Mascota**, **Fecha y lugar**, y **Contacto y revisión**. Se valida cada etapa al continuar; el botón Atrás conserva los datos y la foto seleccionada. La última etapa muestra un resumen editable antes de crear la cuenta o ingresar y guardar el reporte. Las fotos son opcionales.
+La portada presenta una fotografía y tres acciones: mascota perdida, avistamiento y mascota encontrada. Los formularios se completan en tres etapas: **Mascota**, **Fecha y lugar**, y **Contacto y revisión**. Se valida cada etapa al continuar; el botón Atrás conserva los datos y la foto seleccionada. La última etapa muestra un resumen editable antes de crear la cuenta o ingresar y guardar el reporte. Las fotos son opcionales.
 
 **Crear cuenta** tiene una página independiente en `/crear-cuenta`, accesible desde el encabezado, el menú móvil y los formularios de ingreso. Pide nombre o apodo, correo y contraseña con confirmación, e inicia la sesión al guardar. Envía automáticamente el correo de confirmación: antes de publicar o modificar avisos, subir fotos o solicitar análisis desde la cuenta, hay que confirmar el enlace de un solo uso que vence a las 24 horas. Los formularios de publicación reconocen esa sesión, conservan los datos y la foto mientras se confirma en otra pestaña y permiten cambiar de cuenta. Las cuentas existentes que todavía no confirmaron su correo pueden reenviar el enlace desde su cuenta; sus avisos se conservan y pueden cerrarse o marcarse encontrados.
 
@@ -204,7 +206,7 @@ La portada presenta una fotografía y tres acciones: mascota perdida, avistamien
 
 Las opciones **Mis avisos** en la navegación y **Notificaciones** en el encabezado solo aparecen cuando hay una sesión iniciada, tanto en escritorio como en móvil. Se actualizan al ingresar, crear una cuenta o cerrar la sesión.
 
-El primer paso incluye **Sexo**: Macho, Hembra o No lo sé (valor predeterminado). Se guarda como dato declarado en mascotas, avistamientos y animales encontrados, aparece en la revisión y, si es conocido, en las tarjetas de animales perdidos. La ficha individual muestra también cuando no está indicado. La migración `0004_observation_sex` conserva los avistamientos existentes con valor `unknown`. La IA no infiere el sexo a partir de fotografías.
+El primer paso incluye **Sexo**: Macho, Hembra o No lo sé (valor predeterminado). Se guarda como dato declarado en mascotas, avistamientos y mascotas encontradas, aparece en la revisión y, si es conocido, en las tarjetas de mascotas perdidas. La ficha individual muestra también cuando no está indicado. La migración `0004_observation_sex` conserva los avistamientos existentes con valor `unknown`. La IA no infiere el sexo a partir de fotografías.
 
 El lugar se elige buscando una dirección, barrio o punto de referencia, o con el GPS del dispositivo. Los resultados deben seleccionarse para guardar su ubicación; escribir un texto sin elegir un resultado no asigna coordenadas. El GPS se solicita únicamente al tocar el botón y conserva la precisión que informa el dispositivo. Funciona en `localhost` o con HTTPS y requiere permiso del navegador.
 
@@ -222,9 +224,9 @@ La portada, los formularios, el catálogo y Mis avisos comparten la paleta de Ma
 
 ## Apoyanos: aportes voluntarios
 
-La página pública `/apoyanos` se abre desde el botón **Apoyanos**, siempre visible en el encabezado, y desde un bloque de la portada. Presenta cuatro niveles de aporte voluntario en pesos uruguayos: Amigo ($U 100), Colaborador ($U 300), Aliado ($U 600) e Impulsor ($U 1.200), con elección puntual o mensual y monto personalizado.
+La página pública `/apoyanos` se abre desde el botón **Apoyanos**, siempre visible en el encabezado, y desde un bloque de la portada. Presenta cuatro niveles de aporte voluntario en pesos uruguayos: Amigo ($U 100), Colaborador ($U 300), Aliado ($U 600) e Impulsor ($U 1.200), con aporte puntual y monto personalizado; los mensuales quedan deshabilitados.
 
-La selección es una vista previa en el navegador; no se guarda como donación ni inicia un cobro. El botón **Donaciones próximamente** permanece deshabilitado hasta integrar los pagos. Publicar avisos y reportar avistamientos sigue siendo gratuito. [Alcance y configuración de los aportes](docs/donations.md).
+Los aportes puntuales están integrados con Checkout Pro de Mercado Pago mediante Orders API: creación desde el servidor, retorno, confirmación autenticada, cola de reintentos y panel privado de aportes. La integración comienza desactivada hasta configurar credenciales y probar el circuito. Publicar avisos y reportar avistamientos sigue siendo gratuito. [Alcance de los aportes](docs/donations.md) y [configuración paso a paso de Mercado Pago](docs/mercado-pago-configuracion.md).
 
 ## Avisos de pérdida sin fotos
 
@@ -238,24 +240,24 @@ Al cerrar un aviso de pérdida o marcar a la mascota como encontrada, se ofrece 
 
 La portada muestra hasta seis reseñas recientes con puntuación, comentario y nombre público elegido, o **Anónimo** si se deja vacío. Cuando no hay reseñas visibles, la sección no se renderiza. Se requiere ser dueño del aviso y tener correo confirmado, se admite una reseña por aviso y se solicita autorización explícita para publicarla. El autor puede retirarla desde Mis avisos; administración permite ocultar o restaurar reseñas que el autor no haya retirado. [Flujo y alcance](docs/community-reviews.md).
 
-## Animales publicados como perdidos
+## Mascotas publicadas como perdidas
 
-El inicio incluye un mapa interactivo de avisos de pérdida activos con ubicación aproximada, de todas las fechas. Tanto allí como en `/mapa`, los animales perdidos aparecen en círculos con su foto real; sin foto o si falla su carga, muestran una huella. Pasar el mouse abre la miniatura con foto, características y **Ver aviso**. Se puede mover el mouse hasta la tarjeta; al salir se cierra, mientras que pulsar o activar el marcador con Enter o Espacio la mantiene abierta. En pantallas táctiles se abre tocando el círculo. Si varios avisos comparten una zona, el círculo muestra una cantidad y la tarjeta permite elegir cuál consultar. Desde esa ficha, **Volver al mapa del inicio** regresa a la sección de la portada. **Abrir mapa completo** conserva las capas y filtros; avistamientos y encontrados mantienen sus puntos de color.
+El inicio incluye un mapa interactivo de avisos de pérdida activos con ubicación aproximada, de todas las fechas. Tanto allí como en `/mapa`, las mascotas perdidas aparecen en círculos con su foto real; sin foto o si falla su carga, muestran una huella. Pasar el mouse abre la miniatura con foto, características y **Ver aviso**. Se puede mover el mouse hasta la tarjeta; al salir se cierra, mientras que pulsar o activar el marcador con Enter o Espacio la mantiene abierta. En pantallas táctiles se abre tocando el círculo. Si varios avisos comparten una zona, el círculo muestra una cantidad y la tarjeta permite elegir cuál consultar. Desde esa ficha, **Volver al mapa del inicio** regresa a la sección de la portada. **Abrir mapa completo** conserva las capas y filtros; avistamientos y encontrados mantienen sus puntos de color.
 
-En `/mapa`, **Ver reportes en una lista** muestra tarjetas con miniatura, tipo, animal, zona y fecha. Los avisos perdidos reutilizan la foto pública y enlazan a su ficha con regreso al mapa. Los reportes sin miniatura pública muestran un ícono; no se consultan fotos privadas de avistamientos ni se amplían sus permisos. La lista sigue las capas y filtros seleccionados, con el límite existente de 100 reportes, y se adapta a una columna en tablet y móvil.
+En `/mapa`, **Ver reportes en una lista** muestra tarjetas con miniatura, tipo, mascota, zona y fecha. Los avisos perdidos reutilizan la foto pública y enlazan a su ficha con regreso al mapa. Los reportes sin miniatura pública muestran un ícono; no se consultan fotos privadas de avistamientos ni se amplían sus permisos. La lista sigue las capas y filtros seleccionados, con el límite existente de 100 reportes, y se adapta a una columna en tablet y móvil.
 
 Desde una ficha, **Publicar un avistamiento** abre un formulario vinculado que pide ubicación y fotos opcionales, con hora actual o fecha aproximada. Se puede enviar sin crear una cuenta. El dueño recibe una alerta privada de posible avistamiento, con mapa y fotos, y puede habilitar correo SMTP. La comparación usa características de las fotos, fecha y zona; los reportes sin foto o inconclusos se identifican como por confirmar. [Implementación, pruebas y configuración de Brevo Free](docs/linked-sightings.md).
 
-En **Animales perdidos** (`/perdidos`), disponible desde la navegación y la portada, cualquier visitante puede consultar los animales de cualquier especie con aviso `ACTIVE`, buscar por nombre, zona o descripción y abrir una ficha individual. Se muestran hasta 24 avisos por página. Las fotos son opcionales; si no hay foto o no se puede cargar, se muestra un marcador de ausencia.
+En **Mascotas perdidas** (`/perdidos`), disponible desde la navegación y la portada, cualquier visitante puede consultar las mascotas de cualquier especie con aviso `ACTIVE`, buscar por nombre, zona o descripción y abrir una ficha individual. Se muestran hasta 24 avisos por página. Las fotos son opcionales; si no hay foto o no se puede cargar, se muestra un marcador de ausencia.
 
-Los avisos incluyen nombre del animal, características declaradas, descripción, fecha y localidad. La API pública usa una lista explícita de campos; omite datos de cuenta, microchip y coordenadas exactas. Las fotos siguen en el bucket privado y se sirven mediante una ruta que comprueba que el aviso continúa activo y visible. Al marcarlo `FOUND`, `CLOSED` o `CANCELLED`, eliminarlo u ocultarlo por moderación, deja de estar disponible públicamente. El matching general y las alertas se documentan en la entrega de fases 3–8.
+Los avisos incluyen nombre de la mascota, características declaradas, descripción, fecha y localidad. La API pública usa una lista explícita de campos; omite datos de cuenta, microchip y coordenadas exactas. Las fotos siguen en el bucket privado y se sirven mediante una ruta que comprueba que el aviso continúa activo y visible. Al marcarlo `FOUND`, `CLOSED` o `CANCELLED`, eliminarlo u ocultarlo por moderación, deja de estar disponible públicamente. El matching general y las alertas se documentan en la entrega de fases 3–8.
 
 Rutas sin autenticación:
 
 | Método | Ruta | Uso |
 | --- | --- | --- |
 | GET | `/api/v1/public/lost-animals?q=&limit=24&offset=0` | Listado y búsqueda, máximo 48 por consulta |
-| GET | `/api/v1/public/lost-animals/{case_id}` | Ficha de un animal que sigue perdido |
+| GET | `/api/v1/public/lost-animals/{case_id}` | Ficha de una mascota que sigue perdida |
 | GET | `/api/v1/public/lost-animals/{case_id}/photo` | Foto del aviso o de su mascota, limpia y sin metadata EXIF |
 
 La migración `0003_public_lost_dogs` agrega `public_location` a los avisos. La web envía solo la localidad en ese campo; los avisos anteriores usan la línea `Zona:` que ya guardaba el formulario. Las coordenadas internas se conservan para el futuro matching.

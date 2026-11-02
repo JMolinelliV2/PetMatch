@@ -9,6 +9,9 @@ from sqlalchemy.orm import Session
 from app.core.image_storage import load_analysis_image
 from app.db.session import get_db
 from app.models import LostCase, Pet, Photo, User
+from app.photo_albums import album_order
+from app.public_authors import public_publisher_name
+from app.species import SUPPORTED_SPECIES
 from app.schemas import PublicLostDogList, PublicLostDogRead, PublicPhotoList, PublicPhotoRead
 from app.routers.photo_gallery import gallery_photo_response
 
@@ -17,7 +20,7 @@ legacy_router = APIRouter(prefix="/public/lost-dogs", include_in_schema=False)
 
 
 def active_dogs():
-    return select(LostCase, Pet).join(Pet).join(User,Pet.owner_id==User.id).where(LostCase.status == "ACTIVE",LostCase.moderation_status=="VISIBLE",User.status=="ACTIVE")
+    return select(LostCase, Pet).select_from(LostCase).join(Pet, LostCase.pet_id == Pet.id).join(User,Pet.owner_id==User.id).where(Pet.species.in_(SUPPORTED_SPECIES),LostCase.status == "ACTIVE",LostCase.moderation_status=="VISIBLE",User.status=="ACTIVE")
 
 
 def photo_scope(case: LostCase):
@@ -37,13 +40,14 @@ def public_area(case: LostCase) -> str | None:
     return None
 
 
-def notice(case: LostCase, pet: Pet, has_photo: bool) -> PublicLostDogRead:
-    # Explicit allowlist: never serialize the owner, microchip, storage key or GPS point.
+def notice(case: LostCase, pet: Pet, has_photo: bool, publisher_name: str | None = None) -> PublicLostDogRead:
+    # Explicit allowlist: only the publisher's first name, without account/contact data.
     return PublicLostDogRead(
         id=case.id, public_id=case.public_id, name=pet.name, species=pet.species, sex=pet.sex, breed=pet.breed, size=pet.size,
         primary_color=pet.primary_color, description=case.description,
         public_location=public_area(case), lost_at=case.lost_at,
         photo_url=f"/api/v1/public/lost-animals/{case.id}/photo" if has_photo else None,
+        publisher_name=public_publisher_name(publisher_name),
     )
 
 
@@ -74,20 +78,20 @@ def list_public_lost_dogs(
         and_(Photo.owner_type == "lost_case", Photo.owner_id == LostCase.id),
         and_(Photo.owner_type == "pet", Photo.owner_id == Pet.id),
     )).correlate(LostCase, Pet)
-    rows = db.execute(query.add_columns(photo_exists).order_by(LostCase.created_at.desc(), LostCase.id.desc()).offset(offset).limit(limit))
-    return PublicLostDogList(items=[notice(case, pet, has_photo) for case, pet, has_photo in rows], total=total, limit=limit, offset=offset)
+    rows = db.execute(query.add_columns(photo_exists, User.name).order_by(LostCase.created_at.desc(), LostCase.id.desc()).offset(offset).limit(limit))
+    return PublicLostDogList(items=[notice(case, pet, has_photo, publisher_name) for case, pet, has_photo, publisher_name in rows], total=total, limit=limit, offset=offset)
 
 
 @router.get("/{case_id}", response_model=PublicLostDogRead)
 @legacy_router.get("/{case_id}", response_model=PublicLostDogRead)
 def get_public_lost_dog(case_id: UUID, response: Response, db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "no-store"
-    row = db.execute(active_dogs().where(LostCase.id == case_id)).first()
+    row = db.execute(active_dogs().where(LostCase.id == case_id).add_columns(User.name)).first()
     if row is None:
         raise HTTPException(status_code=404, detail="Public notice not found")
-    case, pet = row
+    case, pet, publisher_name = row
     has_photo = db.scalar(select(Photo.id).where(photo_scope(case)).limit(1)) is not None
-    return notice(case, pet, has_photo)
+    return notice(case, pet, has_photo, publisher_name)
 
 
 @router.get("/{case_id}/photo")
@@ -97,7 +101,7 @@ def get_public_lost_dog_photo(case_id: UUID, db: Session = Depends(get_db)):
     if row is None:
         raise HTTPException(status_code=404, detail="Public notice not found")
     case, _ = row
-    photo = db.scalar(select(Photo).where(photo_scope(case)).order_by((Photo.owner_type == "lost_case").desc(), Photo.created_at.desc(), Photo.id.desc()).limit(1))
+    photo = db.scalar(select(Photo).where(photo_scope(case)).order_by(*album_order("lost_case",case.id,pet_id=case.pet_id)).limit(1))
     if photo is None:
         raise HTTPException(status_code=404, detail="Photo not found")
     try:
@@ -118,9 +122,9 @@ def list_public_lost_dog_photos(case_id: UUID, response: Response, db: Session =
     if row is None:
         raise HTTPException(status_code=404, detail="Public notice not found")
     case, _ = row
-    identities = db.scalars(select(Photo.id).where(photo_scope(case)).order_by((Photo.owner_type == "lost_case").desc(), Photo.created_at.desc(), Photo.id.desc()))
+    identities = db.scalars(select(Photo.id).where(photo_scope(case)).order_by(*album_order("lost_case",case.id,pet_id=case.pet_id)))
     response.headers["Cache-Control"] = "no-store"
-    return PublicPhotoList(items=[PublicPhotoRead(id=identity) for identity in identities])
+    return PublicPhotoList(items=[PublicPhotoRead(id=identity,is_primary=index == 0) for index,identity in enumerate(identities)])
 
 
 @router.get("/{case_id}/photos/{photo_id}")

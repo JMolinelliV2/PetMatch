@@ -5,6 +5,7 @@ from app.analysis.service import _schedule,schedule_text,image_snapshot
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models import AnalysisJob,LostCase,Observation,Photo
+from app.species import owner_is_supported
 
 
 def backfill(factory=SessionLocal):
@@ -24,6 +25,8 @@ def backfill(factory=SessionLocal):
                 before=db.scalar(select(func.count()).select_from(AnalysisJob))
                 for row in rows:
                     if kind=="photo":
+                        if not owner_is_supported(db,row.owner_type,row.owner_id):
+                            continue
                         snapshot=image_snapshot(db,row)
                         if snapshot["species"] is not None:
                             _schedule(db,row.owner_type,row.owner_id,"image",snapshot,row.id,priority=10)

@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime
 from typing import Annotated, Generic, Literal, TypeVar
 from uuid import UUID
@@ -7,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, create_mod
 
 Source = Literal["text", "image"]
 Unknown = Literal["unknown", "not_visible", "uncertain"]
-Species = Literal["dog", "cat", "rabbit", "bird", "other", "unknown", "not_visible", "uncertain"]
+Species = Literal["dog", "cat", "unsupported", "unknown", "not_visible", "uncertain"]
 Size = Literal["tiny", "small", "medium", "large", "unknown", "not_visible", "uncertain"]
 Color = Literal["black", "white", "brown", "gray", "cream", "orange", "tan", "red", "multicolor", "unknown", "not_visible", "uncertain"]
 Coat = Literal["short", "medium", "long", "curly", "wire", "hairless", "unknown", "not_visible", "uncertain"]
@@ -53,6 +54,17 @@ class AnimalFeatures(BaseModel):
     face_features: Attribute[FeatureList]
     distinctive_features: Attribute[FeatureList]
     accessories: Attribute[FeatureList]
+
+    @model_validator(mode="after")
+    def discard_misplaced_leg_description(self):
+        # A free-text response may be valid JSON while describing the wrong body part.
+        # Keep the source evidence intact; do not guess or move a trait to another field.
+        words = set(re.findall(r"[^\W\d_]+", self.tail_description.value.casefold()))
+        legs = {"leg", "legs", "legged", "limb", "limbs", "paw", "paws", "pata", "patas", "pierna", "piernas"}
+        tails = {"tail", "tails", "cola", "colas", "rabo", "rabos"}
+        if words & legs and not words & tails:
+            self.tail_description = Attribute[ShortText](value="unknown", confidence=0, source=self.tail_description.source)
+        return self
 
 
 TraitConfidence = Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]

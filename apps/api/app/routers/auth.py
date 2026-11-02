@@ -59,7 +59,9 @@ def register(payload: RegisterRequest, request: Request, db: Session = Depends(g
 def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     email = payload.email.strip().lower()
     check_login_budget(email)
-    user = db.scalar(select(User).where(User.email == email))
+    # Serialize login with credential changes so an old password cannot create
+    # a new session after the other sessions have been revoked.
+    user = db.scalar(select(User).where(User.email == email).with_for_update())
     if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Email or password is incorrect", headers={"WWW-Authenticate": "Bearer"})
     if user.status != "ACTIVE":
@@ -185,10 +187,41 @@ class AccountDelete(BaseModel):
     confirmation: Literal["ELIMINAR"]
 
 
+class PasswordChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=12, max_length=128)
+    confirm_password: str = Field(min_length=12, max_length=128)
+
+
 def confirm_password(user, password):
     check_login_budget(user.email)
     if not password or not verify_password(password,user.password_hash):
         raise HTTPException(400,"La contraseña actual no es correcta.")
+
+
+@router.post("/change-password")
+def change_password(payload: PasswordChange, db=Depends(get_db), user=Depends(current_user), token=Depends(oauth2_scheme)):
+    from app.account_management import lock_account
+    user = lock_account(db, user, token)
+    confirm_password(user, payload.current_password)
+    if payload.new_password != payload.confirm_password:
+        raise HTTPException(422, "Las contraseñas nuevas no coinciden.")
+    if payload.new_password == payload.current_password:
+        raise HTTPException(422, "Elegí una contraseña diferente de la actual.")
+    now = utcnow()
+    session_id = UUID(decode_token_claims(token)["jti"])
+    user.password_hash = hash_password(payload.new_password)
+    db.execute(update(AuthSession).where(
+        AuthSession.user_id == user.id, AuthSession.id != session_id,
+        AuthSession.revoked_at.is_(None),
+    ).values(revoked_at=now))
+    db.execute(update(AccountToken).where(
+        AccountToken.user_id == user.id, AccountToken.kind == "RESET_PASSWORD",
+        AccountToken.consumed_at.is_(None),
+    ).values(consumed_at=now, email_status="CANCELLED"))
+    db.commit()
+    return {"ok": True}
 
 
 def require_token_budget(db,user,kind):

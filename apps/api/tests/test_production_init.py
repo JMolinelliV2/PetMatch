@@ -25,3 +25,17 @@ def test_private_deployment_generation_does_not_replace_keys(tmp_path):
 
 def test_deployment_domain_cannot_inject_configuration(tmp_path):
     with pytest.raises(ValueError):initializer()(tmp_path,"mascomatch.com\nSMTP_PASSWORD=unexpected")
+
+
+def test_payment_secrets_are_empty_private_and_never_replaced(tmp_path):
+    initialize = initializer()
+    initialize(tmp_path)
+    config = (tmp_path / ".env.production").read_text()
+    assert "MP_ENABLED=false" in config and "MP_ENVIRONMENT=test" in config
+    secret = tmp_path / ".secrets" / "mp_access_token"
+    assert secret.read_text().strip() == ""
+    secret.chmod(0o600)
+    secret.write_text("already-installed-private-test-key")
+    initialize.__globals__["prepare_payment_secrets"](tmp_path)
+    assert secret.read_text() == "already-installed-private-test-key"
+    assert "already-installed-private-test-key" not in config

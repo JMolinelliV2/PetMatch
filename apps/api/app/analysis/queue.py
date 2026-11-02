@@ -7,7 +7,7 @@ from rq import Queue
 from rq.serializers import JSONSerializer
 from sqlalchemy import select, update
 
-from app.analysis.service import utcnow
+from app.analysis.service import utcnow, is_current
 from app.analysis.logging import log_event
 from app.core.config import settings
 from app.db.session import SessionLocal
@@ -55,6 +55,11 @@ def dispatch_pending() -> int:
         with SessionLocal() as db:
             job = db.scalar(select(AnalysisJob).where(AnalysisJob.id == job_id).with_for_update())
             if job is None or job.status != "PENDING":
+                continue
+            if not is_current(db, job):
+                job.status, job.error_code, job.finished_at = "STALE", "EVIDENCE_CHANGED", now
+                job.lease_expires_at = job.run_token = None
+                db.commit()
                 continue
             job.status = "DISPATCHING"
             job.dispatch_generation += 1

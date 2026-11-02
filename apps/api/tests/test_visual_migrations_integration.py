@@ -64,7 +64,7 @@ def test_fresh_and_existing_postgres_preserve_historical_vectors(monkeypatch):
                 command.upgrade(cfg,"head")
                 command.upgrade(cfg,"head")  # Safe repeated deploy.
                 with engine.connect() as connection:
-                    assert connection.scalar(sa.text("SELECT version_num FROM alembic_version"))=="0026_analytics_rollup"
+                    assert connection.scalar(sa.text("SELECT version_num FROM alembic_version"))=="0031_donations"
                     assert connection.scalar(sa.text("SELECT count(*) FROM analytics_tracking"))==1
                     assert {"product_events","product_daily","recovery_outcomes","match_exposures"}<=set(sa.inspect(connection).get_table_names())
                     assert {"vector","postgis"}<=set(connection.scalars(sa.text("SELECT extname FROM pg_extension")))

@@ -56,20 +56,20 @@ export function LostDogs() {
     <section className="lost-dogs-results" aria-labelledby="lost-results-title" aria-busy={loading}>
       <h2 id="lost-results-title" ref={resultsHeading} tabIndex={-1} className="lost-results-title">{search ? "Resultados de búsqueda" : "Últimos avisos"}</h2>
       <div aria-live="polite">
-        {loading && <p className="status-text">Cargando animales perdidos…</p>}
-        {!loading && !error && result && <p className="status-text">{result.total === 1 ? "1 animal sigue perdido" : `${result.total} animales siguen perdidos`}</p>}
+        {loading && <p className="status-text">Cargando mascotas reportadas…</p>}
+        {!loading && !error && result && <p className="status-text">{result.total === 1 ? "1 mascota sigue perdida" : `${result.total} mascotas siguen perdidas`}</p>}
       </div>
       {error && <div className="notice notice-warning" role="alert">{error} <button type="button" className="text-button" onClick={() => setRefresh(value => value + 1)}>Reintentar</button></div>}
       {!loading && !error && result?.items.length === 0 && <div className="lost-dogs-empty">
-        <h3>{search ? "No encontramos avisos con esa búsqueda" : "Todavía no hay animales publicados como perdidos"}</h3>
-        <p>{search ? "Probá con otro nombre, zona o característica." : "Cuando alguien publique un animal perdido, su aviso aparecerá acá."}</p>
+        <h3>{search ? "No encontramos avisos con esa búsqueda" : "Todavía no hay avisos activos"}</h3>
+        <p>{search ? "Probá con otro nombre, zona o característica." : "Cuando alguien publique una mascota perdida, su aviso aparecerá acá."}</p>
         {!search && <Link href="/perdi" className="button button-secondary">Publicar una mascota perdida</Link>}
       </div>}
       {!loading && !error && Boolean(result?.items.length) && <>
         <div className="lost-dogs-grid">
           {result!.items.map(dog => <PetCard key={dog.id} animal={dog} />)}
         </div>
-        <nav className="lost-dogs-pagination" aria-label="Páginas de animales perdidos">
+        <nav className="lost-dogs-pagination" aria-label="Páginas de mascotas reportadas">
           <button type="button" className="button button-secondary" disabled={offset === 0} onClick={() => changePage(Math.max(0, offset - pageSize))}>Anterior</button>
           <span>Página {Math.floor(offset / pageSize) + 1} de {Math.max(1, Math.ceil(result!.total / pageSize))}</span>
           <button type="button" className="button button-secondary" disabled={offset + result!.items.length >= result!.total} onClick={() => changePage(offset + pageSize)}>Siguiente</button>

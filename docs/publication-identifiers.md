@@ -1,8 +1,8 @@
 # Identificación de avisos y reportes
 
-Cada aviso de pérdida, avistamiento y reporte de animal encontrado tiene un código público permanente, por ejemplo **MM-000123**. Los tres tipos comparten la misma numeración. El código identifica la publicación, no al animal ni a la persona.
+Cada aviso de pérdida, avistamiento y reporte de mascota encontrada tiene un código público permanente, por ejemplo **MM-000123**. Los tres tipos comparten la misma numeración. El código identifica la publicación, no a la mascota ni a la persona.
 
-El código aparece en el catálogo, las fichas, las miniaturas y listas del mapa, Mis avisos, coincidencias y notificaciones. Al publicar se muestra en la confirmación, incluso para los avistamientos breves sin cuenta. La ficha y el panel propio permiten copiarlo. En Animales perdidos se puede buscar un aviso activo por su código completo, sin distinguir mayúsculas de minúsculas.
+El código aparece en el catálogo, las fichas, las miniaturas y listas del mapa, Mis avisos, coincidencias y notificaciones. Al publicar se muestra en la confirmación, incluso para los avistamientos breves sin cuenta. La ficha y el panel propio permiten copiarlo. En Mascotas perdidas se puede buscar un aviso activo por su código completo, sin distinguir mayúsculas de minúsculas.
 
 ## Persistencia
 

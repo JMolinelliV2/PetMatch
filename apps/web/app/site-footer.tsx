@@ -6,7 +6,7 @@ const navigation = [
     id: "footer-explore-title",
     title: "Explorá",
     links: [
-      { href: "/perdidos", label: "Animales perdidos" },
+      { href: "/perdidos", label: "Mascotas reportadas" },
       { href: "/mapa", label: "Mapa de reportes" },
       { href: "/#como-funciona", label: "Cómo funciona" },
     ],

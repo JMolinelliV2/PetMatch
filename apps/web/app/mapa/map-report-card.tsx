@@ -8,7 +8,7 @@ import { ObservationPhoto } from "../ui/observation-photo";
 import { ReportId } from "../ui/report-id";
 
 export type { MapReportPoint } from "@/lib/public-observations";
-const reportLabels = { lost: "Animal perdido", sighting: "Avistamiento", found: "Animal encontrado" };
+const reportLabels = { lost: "Mascota perdida", sighting: "Avistamiento", found: "Mascota encontrada" };
 const dateLabels = { lost: "Perdido desde el", sighting: "Visto el", found: "Encontrado el" };
 
 export function MapReportCard({ point, href, onShowOnMap }: { point: MapReportPoint; href?: string; onShowOnMap?: () => void }) {

@@ -20,7 +20,7 @@ Si el aviso se cerró, fue encontrado, quedó oculto o ya tiene fotos, el record
 
 Usa el transporte SMTP existente y el modo `MAIL_DELIVERY_MODE`: `smtp` envía por el proveedor configurado, `preview` genera en Mailpit y `disabled` conserva la programación sin enviar. Un recordatorio aceptado por SMTP queda `SENT` (o `PREVIEWED`), sin nuevos envíos automáticos. Los fallos tienen hasta cinco intentos con espera creciente. SMTP no garantiza entrega exactamente una vez si una conexión se interrumpe después de aceptar el mensaje; el Message-ID se mantiene estable por aviso.
 
-La migración `0015_photo_reminders` crea una tabla vacía: no programa recordatorios para avisos anteriores. Tampoco se envían por borradores, registros de cuenta, avistamientos o animales encontrados. El borrado definitivo del aviso elimina su recordatorio mediante la clave foránea.
+La migración `0015_photo_reminders` crea una tabla vacía: no programa recordatorios para avisos anteriores. Tampoco se envían por borradores, registros de cuenta, avistamientos o mascotas encontradas. El borrado definitivo del aviso elimina su recordatorio mediante la clave foránea.
 
 ## Mensaje y destino
 

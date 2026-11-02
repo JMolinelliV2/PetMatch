@@ -30,8 +30,11 @@ test("las fechas del aviso son legibles y toleran datos inválidos", () => {
   assert.equal(lostDate("invalid"), "Fecha no indicada");
 });
 
-test("cada aviso muestra la especie correcta con una etiqueta en español", () => {
-  for (const [species, label] of Object.entries({ dog: "Perro", cat: "Gato", rabbit: "Conejo", bird: "Ave", other: "Otro animal", unknown: "Animal" })) {
+test("cada aviso identifica perros y gatos y señala las especies históricas fuera de alcance", () => {
+  for (const [species, label] of Object.entries({ dog: "Perro", cat: "Gato" })) {
     assert.equal(speciesLabel(species), label);
+  }
+  for (const species of ["rabbit", "bird", "other", "unknown", ""]) {
+    assert.equal(speciesLabel(species), "Especie fuera del alcance actual");
   }
 });

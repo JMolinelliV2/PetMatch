@@ -62,7 +62,7 @@ export function MatchFeedback({ id, caseId, status, caseActive = true, onSaved, 
       {current === "RESOLVED" && <p className="field-help">Este avistamiento está confirmado. La búsqueda sigue abierta hasta que recuperes a tu mascota.</p>}
       <div className="match-recovery">
         <h3>¿Ya está con vos?</h3>
-        <p className="field-help">Si ya recuperaste a tu mascota, marcala como encontrada. El aviso dejará de aparecer entre los animales perdidos y de generar alertas.</p>
+        <p className="field-help">Si ya recuperaste a tu mascota, marcala como encontrada. El aviso dejará de aparecer en el listado público y de generar alertas.</p>
         {recovering?<RecoveryQuestion busy={busy} onConfirm={reason=>void save("RESOLVED",true,reason)} onCancel={()=>setRecovering(false)}/>:<button type="button" className="button button-primary" disabled={busy} onClick={() => setRecovering(true)}>Ya la recuperé</button>}
       </div>
     </>}

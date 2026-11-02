@@ -15,7 +15,10 @@ from app.db.session import get_db
 from app.dependencies import optional_user
 from app.matching.linked import aware, evaluate_sighting
 from app.models import LostCase, Notification, Observation, Photo, User
+from app.photo_albums import MAX_REPORT_PHOTOS, set_cover
+from app.species import is_supported_species, owner_is_supported
 from app.schemas import CoarseGeo, LinkedSightingRead
+from app.report_text import LINKED_SIGHTING_DESCRIPTION
 from app.account_management import lock_active_user
 
 router = APIRouter(prefix="/public/lost-animals", tags=["linked-sightings"])
@@ -38,6 +41,7 @@ def create_linked_sighting(
     public_location: str | None = Form(default=None, max_length=350),
     analytics_geo: str | None = Form(default=None,max_length=350),
     photos: list[UploadFile] | None = File(default=None),
+    primary_index: int = Form(default=0,ge=0,le=4),
     db: Session = Depends(get_db),
     user: User | None = Depends(optional_user),
 ):
@@ -46,14 +50,16 @@ def create_linked_sighting(
     try:geo=CoarseGeo.model_validate_json(analytics_geo).model_dump() if analytics_geo else CoarseGeo().model_dump()
     except ValueError:raise HTTPException(422,"La zona general no es válida.")
     case = db.scalar(select(LostCase).where(LostCase.id == case_id, LostCase.status == "ACTIVE").with_for_update())
-    if case is None:
+    if case is None or not is_supported_species(case.pet.species) or case.moderation_status != "VISIBLE" or case.pet.owner.status != "ACTIVE":
         raise HTTPException(status_code=404, detail="El aviso ya no está activo.")
     observed_at = aware(observed_at)
     if observed_at > utcnow() + timedelta(minutes=1):
         raise HTTPException(status_code=422, detail="La fecha del avistamiento no puede estar en el futuro.")
     uploads = photos or []
-    if len(uploads) > 4:
-        raise HTTPException(status_code=422, detail="Podés adjuntar hasta 4 fotos.")
+    if len(uploads) > MAX_REPORT_PHOTOS:
+        raise HTTPException(status_code=422, detail="Podés adjuntar hasta 5 fotos.")
+    if (uploads and primary_index >= len(uploads)) or (not uploads and primary_index != 0):
+        raise HTTPException(422,"Elegí una miniatura válida.")
     images = []
     for photo in uploads:
         mime = photo.content_type or ""
@@ -66,6 +72,8 @@ def create_linked_sighting(
     snapshot = {"case": str(case_id), "date": observed_at.isoformat(), "lat": latitude, "lon": longitude,
                 "accuracy": location_accuracy_meters, "area": public_location,
                 "photos": [hashlib.sha256(payload).hexdigest() for _, payload in images]}
+    if primary_index:
+        snapshot["primary_index"] = primary_index
     digest = hashlib.sha256(json.dumps(snapshot, sort_keys=True).encode()).hexdigest()
     previous = db.get(Observation, request_id)
     if previous:
@@ -75,7 +83,7 @@ def create_linked_sighting(
     # Species is a routing hint from the selected notice, never independent proof of identity.
     observation = Observation(
         id=request_id, author_id=user.id if user else None, linked_case_id=case_id, submission_hash=digest,
-        species=case.pet.species, sex="unknown", description="Avistamiento enviado desde un aviso. La identidad del animal está por confirmar.",
+        species=case.pet.species, sex="unknown", description=LINKED_SIGHTING_DESCRIPTION, description_format="SYSTEM",
         observed_at=observed_at, latitude=latitude, longitude=longitude, location_accuracy_meters=location_accuracy_meters,
         public_location=public_location, source_type="USER_SIGHTING", matching_status="PENDING",analytics_geo=geo,
     )
@@ -83,7 +91,7 @@ def create_linked_sighting(
     try:
         db.add(observation)
         db.flush()
-        for mime, payload in images:
+        for index,(mime, payload) in enumerate(images):
             try:
                 key, width, height = store_private_image("observation", observation.id, mime, payload)
             except ValueError as exc:
@@ -92,6 +100,8 @@ def create_linked_sighting(
             photo = Photo(owner_type="observation", owner_id=observation.id, storage_key=key, mime_type=mime, width=width, height=height)
             db.add(photo)
             db.flush()
+            if index == primary_index:
+                set_cover(db,"observation",observation.id,photo.id)
             schedule_photo(db, photo)
         evaluate_sighting(db, observation.id)
         from app.product_analytics import record
@@ -119,6 +129,6 @@ def create_linked_sighting(
 def linked_sighting_status(case_id: UUID, sighting_id: UUID, response: Response, db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "no-store"
     observation = db.scalar(select(Observation).where(Observation.id == sighting_id, Observation.linked_case_id == case_id))
-    if observation is None:
+    if observation is None or not owner_is_supported(db,"observation",observation.id):
         raise HTTPException(status_code=404, detail="Avistamiento no encontrado.")
     return result(db, observation)

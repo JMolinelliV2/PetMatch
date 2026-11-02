@@ -1,19 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import { speciesOptions } from "@/lib/species";
 import type { Place } from "@/lib/places";
 import {analyticsGeo} from "@/lib/places";
 import {track} from "@/lib/product-analytics";
 import { LocationPicker } from "./location-picker";
-import { ReportAnalysis } from "./report-analysis";
 import { ReportMatches } from "./report-matches";
+import { ReportConfirmation } from "./report-confirmation";
 import { Stepper } from "./ui/stepper";
 import { PhotoUploader } from "./ui/photo-uploader";
+import {usePhotoSelection} from "./use-photo-selection";
+import {MAX_REPORT_PHOTOS,photoSelectionError,uploadReportPhotos} from "@/lib/report-photos";
 import { SexSelector } from "./ui/sex-selector";
 import { Icon } from "./ui/pictogram";
-import { ReportId } from "./ui/report-id";
 import type { SessionUser } from "./account-session";
 import { VerifyEmailNotice } from "./verify-email-notice";
 import { ReportPurpose } from "./ui/report-purpose";
@@ -25,9 +27,9 @@ type Review = { animal: string; description: string; when: string; note: string 
 type FormControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 const inputClass = "form-input";
 const labels: Record<ReportKind, { title: string; intro: string; submit: string; event: string }> = {
-  lost: { title: "Perdí una mascota", intro: "Completá sus datos y el último lugar donde la viste.", submit: "Publicar mascota perdida", event: "Dónde y cuándo se perdió" },
-  sighting: { title: "Vi una mascota", intro: "Describí al animal e indicá dónde lo viste.", submit: "Publicar avistamiento", event: "Dónde y cuándo lo viste" },
-  found: { title: "Encontré una mascota", intro: "Registrá sus datos y dónde lo encontraste.", submit: "Publicar animal encontrado", event: "Dónde y cuándo lo encontraste" },
+  lost: { title: "Perdí una mascota", intro: "Si perdiste a tu mascota, completá sus datos y el último lugar donde la viste.", submit: "Publicar mascota perdida", event: "Dónde y cuándo se perdió" },
+  sighting: { title: "Vi una mascota", intro: "Si viste una mascota que parece perdida, describila e indicá dónde la viste.", submit: "Publicar avistamiento", event: "Dónde y cuándo la viste" },
+  found: { title: "Encontré una mascota", intro: "Si encontraste una mascota, registrá sus datos y dónde la encontraste.", submit: "Publicar mascota encontrada", event: "Dónde y cuándo la encontraste" },
 };
 
 class ApiError extends Error {
@@ -57,15 +59,6 @@ async function send<T>(path: string, body: object): Promise<T> {
   const result = await readResponse<T>(response);
   if (account) window.dispatchEvent(new Event("mascomatch:session"));
   return result;
-}
-
-async function sendPhoto(file: File, ownerType: string, ownerId: string) {
-  const form = new FormData();
-  form.append("owner_type", ownerType);
-  form.append("owner_id", ownerId);
-  form.append("file", file);
-  const response = await fetch("/api/backend/photos/upload", { method: "POST", body: form });
-  await readResponse(response);
 }
 
 function Section({ title, number, active, children }: { title: string; number: Step; active: Step; children: ReactNode }) {
@@ -100,13 +93,13 @@ export function ReportForm({ kind }: { kind: ReportKind }) {
   const [location, setLocation] = useState<Place | null>(null);
   const [locationError, setLocationError] = useState("");
   const [resetCount, setResetCount] = useState(0);
-  const [photo, setPhoto] = useState<File | null>(null);
+  const {photos,primaryIndex,changePhotos,setPrimaryIndex} = usePhotoSelection();
+  const photo = photos[primaryIndex ?? 0] ?? null;
   const [missingPhotoNotice, setMissingPhotoNotice] = useState(false);
   const [preview, setPreview] = useState("");
-  const photoFiles = useMemo(() => photo ? [photo] : [], [photo]);
   const copy = labels[kind];
   const needsVerification = Boolean(sessionUser && !sessionUser.email_verified);
-  const stepTitles = [kind === "lost" ? "Contanos sobre tu mascota" : "Contanos sobre el animal", copy.event, "Revisá el reporte y dejá tu contacto"];
+  const stepTitles = [kind === "lost" ? "Contanos sobre tu mascota" : "Contanos sobre la mascota", copy.event, "Revisá el reporte y dejá tu contacto"];
   const stepIntros = ["Empezá por sus características. Los campos opcionales pueden quedar vacíos.", "La fecha y la hora pueden ser aproximadas. Elegí el lugar por su nombre o dirección.", "Podés editar los datos antes de publicar. Tu contacto se guarda con tu cuenta."];
 
   useEffect(() => {
@@ -216,11 +209,9 @@ export function ReportForm({ kind }: { kind: ReportKind }) {
       setLocationError(message);
       return invalid(formElement, 2, "locationSearch", message);
     }
-    if (target === 1 && photo) {
-      if (photo.size > 10 * 1024 * 1024) return invalid(formElement, 1, "photo", "La foto no puede superar los 10 MB.");
-      if (!["image/jpeg", "image/png", "image/webp"].includes(photo.type)) {
-        return invalid(formElement, 1, "photo", "La foto debe ser JPEG, PNG o WebP.");
-      }
+    if (target === 1) {
+      const photoError = photoSelectionError(photos);
+      if (photoError) return invalid(formElement, 1, "photo", photoError);
     }
     if (target === 2) {
       const when = new Date(text("observedAt"));
@@ -284,16 +275,9 @@ export function ReportForm({ kind }: { kind: ReportKind }) {
       const sex = text("sex");
       const color = text("color");
       const size = text("size");
-      // Exact addresses stay in the picker; reports include only the locality.
-      const placeDescription = location?.locality ? `Zona: ${location.locality}` : "";
-      // Preserve both the animal description and the context in the original report.
-      const description = [
-        text("description"),
-        color !== "unknown" ? `Color principal: ${formElement.querySelector<HTMLSelectElement>('[name="color"]')?.selectedOptions[0].textContent}.` : "",
-        size !== "unknown" ? `Tamaño: ${formElement.querySelector<HTMLSelectElement>('[name="size"]')?.selectedOptions[0].textContent}.` : "",
-        placeDescription,
-        kind !== "lost" && text("eventNote") ? `Detalles del reporte: ${text("eventNote")}` : "",
-      ].filter(Boolean).join("\n\n");
+      // Only authored text belongs in the description. Traits and location have
+      // their own fields and remain available to matching without being appended.
+      const description = [text("description"), kind !== "lost" ? text("eventNote") : ""].filter(Boolean).join("\n\n");
       const locationData = location ? {
         analytics_geo:analyticsGeo(location),
         latitude: location.latitude,
@@ -321,14 +305,14 @@ export function ReportForm({ kind }: { kind: ReportKind }) {
         ownerType = "observation";
       }
       if (photo) {
-        try { await sendPhoto(photo, ownerType, report.id); }
-        catch { setPhotoWarning(kind === "lost" ? "El aviso se guardó, pero la foto no pudo subirse. Podés agregarla desde Mis avisos para que más personas reconozcan a tu mascota." : "El reporte se guardó, pero la foto no pudo subirse. La información que compartiste quedó registrada."); }
+        try { await uploadReportPhotos(photos, ownerType, report.id,primaryIndex); }
+        catch { setPhotoWarning("El reporte se guardó, pero no pudimos subir las fotos. Podés agregarlas desde Mis avisos y elegir la miniatura."); }
       }
       setSuccess(kind === "lost" ? `El aviso de ${text("petName")} quedó guardado.` : "Gracias por ayudar. Tu reporte quedó guardado.");
       setSavedReport({ ownerType, ownerId: report.id, publicId: report.public_id });
       formElement.reset();
       setLocation(null);
-      setPhoto(null);
+      changePhotos([]);
       setResetCount(count => count + 1);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401 && sessionUser) {
@@ -343,28 +327,16 @@ export function ReportForm({ kind }: { kind: ReportKind }) {
 
   if (success) {
     return (
-      <main id="main-content" className="page report-page success-page">
-        <span className="success-mark" aria-hidden="true">✓</span>
-        <h1>Tu reporte quedó guardado</h1>
-        <p role="status" className="page-intro">{success}</p>
-        {savedReport && <ReportId id={savedReport.ownerId} publicId={savedReport.publicId} label={savedReport.ownerType === "lost_case" ? "ID del aviso" : "ID del reporte"} copyable />}
-        {photoWarning && <p role="alert" className="notice notice-warning">{photoWarning}</p>}
-        {savedReport && <ReportAnalysis {...savedReport} />}
+      <ReportConfirmation kind={kind} report={savedReport} message={success} photoWarning={photoWarning} onCreateAnother={() => {
+        setSuccess(""); setPhotoWarning(""); setReview(null); setSavedReport(null); goToStep(1);
+      }}>
         {savedReport?.ownerType === "observation" && <ReportMatches observationId={savedReport.ownerId} />}
-        <div className="success-actions">
-          {kind === "lost" && <Link href="/perdidos" className="button button-primary">Ver animales perdidos</Link>}
-          <Link href="/" className="button button-primary">Volver al inicio</Link>
-          <button type="button" className="button button-secondary" onClick={() => {
-            setSuccess(""); setPhotoWarning(""); setReview(null); setSavedReport(null); goToStep(1);
-          }}>Crear otro reporte</button>
-        </div>
-      </main>
+      </ReportConfirmation>
     );
   }
 
   return (
     <main id="main-content" className="page report-page">
-      <Link href="/" className="back-link"><span aria-hidden="true">←</span> Volver al inicio</Link>
       <h1>{kind === "lost" ? <>Perdí una <span className="title-accent">mascota</span></> : kind === "sighting" ? <>Reportar un <span className="title-accent">avistamiento</span></> : <>Encontré una <span className="title-accent">mascota</span></>}</h1>
       <p className="page-intro">{copy.intro}</p>
       {kind !== "lost" && <ReportPurpose kind={kind} />}
@@ -376,16 +348,15 @@ export function ReportForm({ kind }: { kind: ReportKind }) {
         <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">{stepTitles[step - 1]}</h2>
         <p className="step-intro">{stepIntros[step - 1]}</p>
         <fieldset disabled={busy} className="form-controls">
-          <Section title={kind === "lost" ? "Mascota" : "Datos del animal"} number={1} active={step}>
+          <Section title={kind === "lost" ? "Mascota" : "Datos de la mascota"} number={1} active={step}>
             <div className="form-grid">
-              <label className="field-label">Animal
+              <label className="field-label">Mascota
                 <select name="species" required defaultValue="" className={inputClass} {...fieldAttributes("species")}>
                   <option value="" disabled>Seleccioná una opción</option>
-                  <option value="dog">Perro</option><option value="cat">Gato</option>
-                  <option value="rabbit">Conejo</option><option value="bird">Ave</option><option value="other">Otro</option>
-                  {kind !== "lost" && <option value="unknown">No lo sé</option>}
+                  {speciesOptions.map(([value,label])=><option key={value} value={value}>{label}</option>)}
                 </select>
                 {fieldFeedback("species")}
+                <span className="field-help">MascoMatch admite perros y gatos.</span>
               </label>
               {kind === "lost" && <label className="field-label">Nombre
                 <input name="petName" required minLength={1} maxLength={120} autoComplete="off" placeholder="Nombre de tu mascota" className={inputClass} {...fieldAttributes("petName")} />
@@ -408,12 +379,12 @@ export function ReportForm({ kind }: { kind: ReportKind }) {
               </label>
             </div>
             <label className="field-label">Descripción
-              <textarea name="description" required minLength={1} maxLength={2500} rows={3} className={inputClass} {...fieldAttributes("description", "description-help")} />
+              <textarea name="description" required minLength={1} maxLength={2500} rows={3} placeholder="Ej.: tiene una mancha blanca en el pecho, una oreja caída y un collar azul." className={inputClass} {...fieldAttributes("description", "description-help")} />
               <span id="description-help" className="field-help">Contanos sobre sus colores, manchas, collar u otras características.</span>
               {fieldFeedback("description")}
             </label>
-            <PhotoUploader name="photo" inputRef={photoInputRef} files={photoFiles} onFilesChange={files => { setPhoto(files[0] ?? null); setMissingPhotoNotice(false); }} />
-            {kind !== "lost" && <p className="field-help">La descripción y las fotos del animal pueden verse en el mapa público. Tu contacto y la ubicación exacta se mantienen privados.</p>}
+            <PhotoUploader name="photo" inputRef={photoInputRef} maxFiles={MAX_REPORT_PHOTOS} files={photos} primaryIndex={primaryIndex} onPrimaryChange={setPrimaryIndex} onFilesChange={files => { changePhotos(files); setMissingPhotoNotice(false); }} />
+            {kind !== "lost" && <p className="field-help">La descripción y las fotos de la mascota pueden verse en el mapa público. Tu contacto y la ubicación exacta se mantienen privados.</p>}
           </Section>
 
           <Section title={copy.event} number={2} active={step}>
@@ -438,11 +409,11 @@ export function ReportForm({ kind }: { kind: ReportKind }) {
                 <button type="button" className="text-button" onClick={() => goToStep(1)} aria-label="Editar los datos de la mascota">Editar</button>
               </div>
               <dl className="review-details">
-                <div><dt>Datos del animal</dt><dd>{review?.animal}</dd></div>
+                <div><dt>Datos de la mascota</dt><dd>{review?.animal}</dd></div>
                 <div><dt>Descripción</dt><dd>{review?.description}</dd></div>
-                <div><dt>Foto</dt><dd>{photo ? photo.name : "Sin foto"}</dd></div>
+                <div><dt>Fotos</dt><dd>{photo ? `${photos.length} ${photos.length === 1 ? "foto" : "fotos"} · Miniatura: ${photo.name}` : "Sin fotos"}</dd></div>
               </dl>
-              {preview && photo?.type.startsWith("image/") && <img src={preview} alt="Foto que se adjuntará al reporte" className="photo-preview" />}
+              {preview && photo?.type.startsWith("image/") && <img src={preview} alt="Miniatura elegida para el reporte" className="photo-preview" />}
             </section>
             <section className="review-block" aria-labelledby="review-place-title">
               <div className="review-heading">
@@ -464,8 +435,9 @@ export function ReportForm({ kind }: { kind: ReportKind }) {
               <label><input type="radio" name="accountMode" checked={accountMode === "login"} onChange={() => setAccountMode("login")} />Ya tengo cuenta</label>
             </div>
             <div className="form-grid">
-              {accountMode === "register" && <label className="field-label span-full">Tu nombre
-                <input name="name" required minLength={1} maxLength={120} autoComplete="name" className={inputClass} {...fieldAttributes("name")} />
+              {accountMode === "register" && <label className="field-label span-full">Tu nombre o apodo
+                <input name="name" required minLength={1} maxLength={120} autoComplete="nickname" className={inputClass} {...fieldAttributes("name")} />
+                <span className="field-help">En tus publicaciones mostramos solo la primera palabra de este nombre o apodo.</span>
                 {fieldFeedback("name")}
               </label>}
               <label className="field-label">Correo electrónico
@@ -498,9 +470,9 @@ export function ReportForm({ kind }: { kind: ReportKind }) {
       <aside className="report-sidebar" aria-label="Ayuda para publicar">
         <div className="help-card help-card-blue"><span className="help-icon"><Icon name="shield" /></span><div><h2>{step === 3 ? "Revisá antes de publicar" : "Cada dato puede ayudar"}</h2><p>{step === 3 ? "Comprobá la descripción y el lugar. Podés volver a editarlos antes de enviar." : "Las fotos son opcionales. Compartí los datos que conozcas y elegí el lugar en el mapa."}</p></div></div>
         <div className="help-card help-steps"><h2>¿Qué sigue?</h2><ol>
-          <li><span className="help-icon help-icon-coral"><Icon name="camera" /></span><div><h3>Datos y foto</h3><p>Describí al animal y agregá una foto si tenés.</p></div></li>
+          <li><span className="help-icon help-icon-coral"><Icon name="camera" /></span><div><h3>Datos y foto</h3><p>Describí a la mascota y agregá una foto si tenés.</p></div></li>
           <li><span className="help-icon help-icon-green"><Icon name="pin" /></span><div><h3>Fecha y lugar</h3><p>Buscá una dirección o ajustá el pin en la misma página.</p></div></li>
-          <li><span className="help-icon"><Icon name="check" /></span><div><h3>Revisión y publicación</h3><p>{kind === "lost" ? "Tu aviso aparecerá en Animales perdidos. Las alertas estarán en tu cuenta." : "Una vez guardado, compararemos tu reporte con los avisos activos."}</p></div></li>
+          <li><span className="help-icon"><Icon name="check" /></span><div><h3>Revisión y publicación</h3><p>{kind === "lost" ? "Tu aviso aparecerá en Mascotas reportadas. Las alertas estarán en tu cuenta." : "Una vez guardado, compararemos tu reporte con los avisos activos."}</p></div></li>
         </ol></div>
         <p className="sidebar-note"><Icon name="shield" />Tu correo y la ubicación exacta no se muestran públicamente.</p>
       </aside>

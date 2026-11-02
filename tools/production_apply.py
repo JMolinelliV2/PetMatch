@@ -50,6 +50,9 @@ def main():
         parser.error("Initialize private configuration with tools/production_init.py first")
     if args.action=="deploy":
         subprocess.run([sys.executable,str(ROOT/"tools/production_init.py"),"--directory",str(path.parent),
+                        "--prepare-payment-secrets","--secrets-directory",
+                        os.environ.get("SECRETS_DIR",str(path.parent/".secrets"))],check=True)
+        subprocess.run([sys.executable,str(ROOT/"tools/production_init.py"),"--directory",str(path.parent),
                         "--prepare-b2-secrets","--secrets-directory",
                         os.environ.get("SECRETS_DIR",str(path.parent/".secrets"))],check=True)
     if args.action=="fallback" and read_config(path).get("OPENCLIP_ENABLED","true")!="true":

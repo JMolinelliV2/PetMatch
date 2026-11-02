@@ -14,10 +14,10 @@ La notificación y el registro de revisión se reutilizan cuando termina la comp
 
 ## Función disponible
 
-Desde una ficha de **Animales perdidos**, **Publicar un avistamiento** abre `/avistamiento?aviso=<case_id>`. El formulario muestra el animal seleccionado y pide:
+Desde una ficha de **Mascotas perdidas**, **Publicar un avistamiento** abre `/avistamiento?aviso=<case_id>`. El formulario muestra la mascota seleccionado y pide:
 
 - Ubicación, por búsqueda, GPS o ajuste del pin.
-- Hasta 4 fotos opcionales, JPEG/PNG/WebP de hasta 10 MB cada una.
+- Hasta 5 fotos opcionales y elección de miniatura, JPEG/PNG/WebP de hasta 10 MB cada una.
 - Hora actual con **Lo vi recién**, o fecha y hora aproximadas al desmarcarlo.
 
 Se puede enviar sin crear una cuenta. La referencia al aviso se conserva en `Observation.linked_case_id`. La descripción generada indica que la identidad está por confirmar; las características del aviso son contexto y no se copian como evidencia independiente del avistamiento.
@@ -32,7 +32,7 @@ El servicio `app/matching/linked.py` compara este avistamiento con el aviso sele
 4. Con resultados visuales disponibles, compara especie, color, tamaño, pelaje, patrón y tipo/raza. Usa atributos de confianza mínima 0,7, al menos 0,5 de peso compatible y puntuación normalizada de 0,75 por defecto.
 5. Una especie o color diferente, una fecha incompatible o una ubicación fuera del radio quedan como **Comparación: no compatible**. La notificación de recepción se mantiene disponible para el dueño. Las fotografías compatibles se presentan como **posible coincidencia**, nunca como identificación segura.
 
-Pesos: especie 0,35; color 0,30; tamaño, longitud del pelaje y patrón 0,10 cada uno; tipo/raza 0,05. La puntuación es una regla de compatibilidad y no una probabilidad de identidad. Se utilizan resultados vigentes del proveedor/modelo/versión actuales. Las declaraciones del dueño tienen prioridad como descripción del animal buscado.
+Pesos: especie 0,35; color 0,30; tamaño, longitud del pelaje y patrón 0,10 cada uno; tipo/raza 0,05. La puntuación es una regla de compatibilidad y no una probabilidad de identidad. Se utilizan resultados vigentes del proveedor/modelo/versión actuales. Las declaraciones del dueño tienen prioridad como descripción de la mascota buscado.
 
 Cada avistamiento tiene como máximo una notificación. La persona autenticada que creó el aviso no recibe una alerta de su propio reporte. Las peticiones repetidas conservan el mismo UUID y hash de datos para evitar duplicaciones; reutilizar el UUID con datos diferentes devuelve 409.
 
@@ -108,7 +108,7 @@ TypeScript y la sintaxis Python terminaron sin errores. Se actualizaron las expe
 - Frontend: **22 pruebas aprobadas**; TypeScript sin errores y compilación correcta.
 - PostgreSQL real en `0005_linked_sightings (head)`; servicios en ejecución.
 - Recorrido HTTP por la web con una cuenta temporal: cookie `HttpOnly`, avistamiento anónimo, recuperación de sesión vencida, bandeja privada, enlace del correo, marcado como leído y rechazo de otro origen. Los registros temporales se eliminaron conservando los avisos existentes.
-- Navegador: el botón dentro del aviso de Pepe abre su formulario vinculado sin solicitar datos del animal ni cuenta.
+- Navegador: el botón dentro del aviso de Pepe abre su formulario vinculado sin solicitar datos de la mascota ni cuenta.
 
 - Pruebas regulares de API: casos sin foto, imagen compatible, contradicciones, fotos inconclusas, fallos de análisis, fotos múltiples, deduplicación, permisos, lecturas, edición, cierre, limpieza y preferencias/reintentos SMTP.
 - Migración nueva con una base vacía y con registros existentes, más downgrade/upgrade.
